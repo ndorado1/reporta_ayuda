@@ -4021,22 +4021,50 @@ export function MapListToggle({ current }: { current: 'lista' | 'mapa' }) {
 
 - [ ] **Step 4: Conectar el mapa en la página de inicio**
 
-En `src/app/page.tsx`, añadir arriba:
+`ssr: false` **no puede usarse dentro de un Server Component**, y `page.tsx`
+lo es. Hay que aislar la carga diferida en un componente cliente propio.
+
+Crear `src/components/RequestMapLazy.tsx`:
 
 ```tsx
-import dynamicImport from 'next/dynamic'
-import { MapListToggle } from '@/components/MapListToggle'
-import { getCityBySlug } from '@/lib/cities'
+'use client'
 
-// Leaflet toca window: nunca en el servidor. Además así no pesa en la
-// carga inicial de quien solo quiere la lista.
-const RequestMap = dynamicImport(() => import('@/components/RequestMap'), {
+import dynamic from 'next/dynamic'
+import type { RequestListItem } from '@/lib/requests'
+
+// Leaflet toca `window`, así que nunca puede renderizarse en el servidor.
+// Además, cargarlo aparte evita que pese en la primera carga de quien solo
+// quiere la lista, que en móvil es la vista por defecto.
+const RequestMap = dynamic(() => import('./RequestMap'), {
   ssr: false,
   loading: () => (
-    <div className="h-[60vh] w-full animate-pulse rounded-xl bg-slate-100" aria-label="Cargando mapa" />
+    <div
+      className="h-[60vh] w-full animate-pulse rounded-xl bg-slate-100"
+      aria-label="Cargando mapa"
+    />
   ),
 })
+
+export function RequestMapLazy(props: {
+  items: RequestListItem[]
+  center: { lat: number; lng: number }
+  zoom: number
+}) {
+  return <RequestMap {...props} />
+}
 ```
+
+Y en `src/app/page.tsx`, importar ese componente y el conmutador:
+
+```tsx
+import { Suspense } from 'react'
+import { RequestMapLazy } from '@/components/RequestMapLazy'
+import { MapListToggle } from '@/components/MapListToggle'
+import { getCityBySlug } from '@/lib/cities'
+```
+
+`MapListToggle` usa `useSearchParams`, así que también va envuelto en
+`<Suspense>` donde se use.
 
 Ampliar la firma de `searchParams` con `vista?: string` y, tras calcular `items`:
 
