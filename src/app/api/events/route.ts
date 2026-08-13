@@ -3,10 +3,15 @@ import { listEvents } from '@/lib/events'
 
 export const dynamic = 'force-dynamic'
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const citySlug = url.searchParams.get('ciudad') || undefined
-  const sinceId = url.searchParams.get('desde') || undefined
+  const desde = url.searchParams.get('desde')
+  // Un "desde" malformado no debe tumbar la campanita: se ignora el
+  // filtro y se cuenta/lista todo, igual que cuando el id no existe.
+  const sinceId = desde && UUID_RE.test(desde) ? desde : undefined
 
   const events = await listEvents({ citySlug, sinceId, limit: 30 })
 
