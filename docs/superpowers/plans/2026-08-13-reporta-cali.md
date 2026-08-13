@@ -4568,7 +4568,13 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
   const label = 'block text-base font-semibold text-[--color-primary]'
 
   return (
-    <form onSubmit={submit} className="space-y-6">
+    // `noValidate` desactiva la validación nativa del navegador a propósito.
+    // Sin él, `required` interrumpe el envío con un mensaje del propio
+    // navegador, en el idioma del navegador y sin `role="alert"`: alguien
+    // con el teléfono en inglés vería un texto que no entiende justo en la
+    // pantalla donde pide ayuda, y un lector de pantalla no lo anunciaría.
+    // Toda la validación pasa por `createRequestSchema`, en español.
+    <form onSubmit={submit} noValidate className="space-y-6">
       <div>
         <label htmlFor="ciudad" className={label}>Ciudad</label>
         <select
@@ -4694,24 +4700,30 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
         <input id="website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
       </div>
 
-      <div className="flex gap-3 rounded-lg bg-slate-50 p-4">
+      {/* La fila entera es la etiqueta y mide 44 px de alto: la casilla sola
+          medía 24 px, por debajo del mínimo táctil, y es justo la que hay
+          que marcar para poder pedir ayuda. Así el área pulsable abarca
+          también el texto. */}
+      <label
+        htmlFor="privacidad"
+        className="flex min-h-[44px] cursor-pointer gap-3 rounded-lg bg-slate-50 p-4"
+      >
         <input
           id="privacidad"
           type="checkbox"
           checked={acceptsPrivacy}
           onChange={(e) => setAcceptsPrivacy(e.target.checked)}
           className="mt-1 h-6 w-6 shrink-0 cursor-pointer"
-          required
         />
-        <label htmlFor="privacidad" className="text-sm text-[--color-secondary]">
+        <span className="text-sm text-[--color-secondary]">
           Autorizo publicar mi nombre, mi ubicación y lo que necesito, y que mi número
           de WhatsApp se entregue a quien quiera ayudarme. Puedo pedir que se borre
           cuando quiera. Leer la{' '}
           <Link href="/privacidad" className="cursor-pointer font-semibold text-[--color-cta] underline">
             política de datos
           </Link>.
-        </label>
-      </div>
+        </span>
+      </label>
 
       {error && (
         <p role="alert" className="rounded-lg bg-[--color-urgente-soft] p-3 text-base font-semibold text-[--color-urgente]">
