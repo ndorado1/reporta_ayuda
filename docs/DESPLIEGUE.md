@@ -40,8 +40,11 @@ ADMIN_COOKIE_SECRET=<salida del tercer comando>
 Completar también en `.env`:
 
 - `NEXT_PUBLIC_SITE_URL`: la URL pública final, por ejemplo
-  `https://TU_DOMINIO` (con `https`, sin barra al final). Los enlaces de
-  gestión que reciben las personas por WhatsApp se arman con este valor.
+  `https://TU_DOMINIO` (con `https`, sin barra al final). **Hoy la aplicación
+  no la lee**: los enlaces de gestión se construyen con el origen real del
+  navegador, así que funcionan en cualquier dominio sin configurar nada. Se
+  deja porque alguna integración futura puede necesitarla, pero cambiarla no
+  afecta a nada. El dominio de verdad se configura en nginx, más abajo.
 - `DATABASE_URL`: la cadena de conexión al Postgres de producción ya
   existente, con el formato
   `postgres://USUARIO:CLAVE@HOST:5432/NOMBRE_BASE`.
