@@ -54,7 +54,7 @@ export function CitySelect({ cities }: { cities: Option[] }) {
   return (
     <label className="flex items-center gap-2 text-sm font-medium text-(--color-secondary)">
       <MapPin aria-hidden="true" className="h-5 w-5 shrink-0" />
-      <span className="sr-only">Ciudad</span>
+      <span className="sr-only">Filtrar por ciudad</span>
       <select
         value={activeSlug}
         onChange={(e) => onChange(e.target.value)}

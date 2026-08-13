@@ -5,10 +5,12 @@ test('una persona publica una solicitud y aparece en el listado', async ({ page 
 
   await page.goto('/nueva')
 
-  // { exact: true }: la cabecera trae su propio selector de ciudad (filtro
-  // global), cuyo nombre accesible incluye el texto de la opción elegida
-  // ("Ciudad" + "Todas las ciudades"). Sin `exact`, `getByLabel('Ciudad')`
-  // resuelve a dos elementos.
+  // { exact: true }: el nombre accesible del selector de la cabecera ahora
+  // es "Filtrar por ciudad" (distinto del campo del formulario, que es
+  // "Ciudad") — la ambigüedad real de accesibilidad ya no existe. Pero
+  // `getByLabel` sin `exact` hace coincidencia de subcadena sin distinguir
+  // mayúsculas, y "ciudad" sigue apareciendo dentro de "Filtrar por
+  // ciudad", así que Playwright todavía necesita la pista.
   await page.getByLabel('Ciudad', { exact: true }).selectOption('cali')
   await page.getByLabel('¿Qué está pasando?').fill(titulo)
   await page.getByLabel('Qué necesitas (1)').fill('Agua potable')
