@@ -30,10 +30,19 @@ export function CancelClaimButton({ code }: { code: string }) {
 
   async function cancel() {
     setBusy(true)
-    const result = await cancelClaimAction(code, token!)
-    if (result.ok) router.refresh()
-    else setError(result.error)
-    setBusy(false)
+    setError(null)
+    // try/catch/finally: sin esto, un corte de red deja "busy" en true para
+    // siempre y el botón se congela en "Cancelando…" sin forma de reintentar
+    // salvo recargar.
+    try {
+      const result = await cancelClaimAction(code, token!)
+      if (result.ok) router.refresh()
+      else setError(result.error)
+    } catch {
+      setError('No pudimos guardar el cambio. Revisa tu conexión e inténtalo de nuevo.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (

@@ -42,14 +42,25 @@ export function OwnerActions({
   async function run(action: Action) {
     setBusy(true)
     setError(null)
-    const result = await action(code, token)
-    if (result.ok) {
-      setConfirming(null)
-      router.refresh()
-    } else {
-      setError(result.error)
+    // Un corte de red a mitad de la petición no lanza un error "de servidor"
+    // (eso ya lo captura el try/catch de la action): rechaza la promesa del
+    // fetch aquí mismo. Sin este try/catch/finally, "busy" se queda en true
+    // para siempre y el botón queda congelado en "Guardando…" sin forma de
+    // reintentar salvo recargar — grave para quien cierra su solicitud desde
+    // un celular con señal intermitente en zona de desastre.
+    try {
+      const result = await action(code, token)
+      if (result.ok) {
+        setConfirming(null)
+        router.refresh()
+      } else {
+        setError(result.error)
+      }
+    } catch {
+      setError('No pudimos guardar el cambio. Revisa tu conexión e inténtalo de nuevo.')
+    } finally {
+      setBusy(false)
     }
-    setBusy(false)
   }
 
   return (

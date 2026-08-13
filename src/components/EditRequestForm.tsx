@@ -36,22 +36,30 @@ export function EditRequestForm({
     setSaving(true)
     setError(null)
 
-    const result = await updateRequestAction(detail.publicCode, token, {
-      title,
-      description,
-      urgency,
-      neighborhood,
-      addressText,
-      items: items.filter((i) => i.name.trim()),
-    })
+    // try/catch/finally: sin esto, un corte de red deja "saving" en true
+    // para siempre y el botón se congela en "Guardando…" sin forma de
+    // reintentar salvo recargar (y perder los cambios escritos).
+    try {
+      const result = await updateRequestAction(detail.publicCode, token, {
+        title,
+        description,
+        urgency,
+        neighborhood,
+        addressText,
+        items: items.filter((i) => i.name.trim()),
+      })
 
-    if (result.ok) {
-      onDone()
-      router.refresh()
-    } else {
-      setError(result.error)
+      if (result.ok) {
+        onDone()
+        router.refresh()
+      } else {
+        setError(result.error)
+      }
+    } catch {
+      setError('No pudimos guardar el cambio. Revisa tu conexión e inténtalo de nuevo.')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   return (

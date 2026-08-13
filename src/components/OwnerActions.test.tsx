@@ -55,4 +55,16 @@ describe('OwnerActions', () => {
     render(<OwnerActions code="ABC123" token="t" status="atendida" detail={detail} onFulfill={fulfill} onCancel={cancel} />)
     expect(screen.queryByRole('button', { name: /^editar$/i })).not.toBeInTheDocument()
   })
+
+  it('no deja el botón congelado si un corte de red rechaza la promesa', async () => {
+    const flaky = vi.fn(async () => {
+      throw new Error('network down')
+    })
+    render(<OwnerActions code="ABC123" token="t" status="abierta" detail={detail} onFulfill={flaky} onCancel={cancel} />)
+    fireEvent.click(screen.getByRole('button', { name: /ya recibí la ayuda/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^sí, confirmar$/i }))
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/no pudimos guardar/i))
+    expect(screen.getByRole('button', { name: /^sí, confirmar$/i })).not.toBeDisabled()
+  })
 })
