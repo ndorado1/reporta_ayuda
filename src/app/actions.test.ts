@@ -23,6 +23,8 @@ vi.mock('@/lib/requests', async () => {
 })
 
 import { cancelRequestAction } from './actions'
+import { cancelRequest } from '@/lib/requests'
+import { DomainError } from '@/lib/errors'
 
 describe('fail() en las Server Actions', () => {
   it('no expone el mensaje de un error inesperado de base de datos', async () => {
@@ -33,5 +35,20 @@ describe('fail() en las Server Actions', () => {
     expect(result.error).toBe('No pudimos guardar. Inténtalo de nuevo en un momento.')
     expect(result.error).not.toContain('Failed query')
     expect(result.error).not.toContain('3001234567')
+  })
+
+  // La otra mitad del contrato: un DomainError sí trae un mensaje pensado
+  // para mostrarse ("No autorizado", "El número debe ser un celular
+  // colombiano de diez dígitos") y `fail()` debe dejarlo pasar tal cual. Si
+  // `fail()` se rompiera para devolver siempre el genérico, esta prueba
+  // fallaría porque el mensaje esperado no llegaría al resultado.
+  it('sí expone el mensaje de un DomainError esperado', async () => {
+    vi.mocked(cancelRequest).mockRejectedValueOnce(new DomainError('No autorizado'))
+
+    const result = await cancelRequestAction('ABC123', 'token-cualquiera')
+
+    expect(result.ok).toBe(false)
+    if (result.ok) throw new Error('la acción debía fallar')
+    expect(result.error).toBe('No autorizado')
   })
 })
