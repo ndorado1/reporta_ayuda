@@ -30,7 +30,7 @@ export function WhatsAppButton({ code, className = '' }: { code: string; classNa
         {loading ? 'Abriendo…' : 'Contactar por WhatsApp'}
       </Button>
       {error && (
-        <p role="alert" className="mt-2 text-sm font-medium text-[--color-urgente]">{error}</p>
+        <p role="alert" className="mt-2 text-sm font-medium text-(--color-urgente)">{error}</p>
       )}
     </div>
   )

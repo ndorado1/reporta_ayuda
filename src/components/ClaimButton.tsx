@@ -44,8 +44,8 @@ export function ClaimButton({ code }: { code: string }) {
   }
 
   return (
-    <div className="rounded-lg border border-[--color-line] bg-white p-3">
-      <label htmlFor={`nombre-${code}`} className="block text-sm font-semibold text-[--color-secondary]">
+    <div className="rounded-lg border border-(--color-line) bg-white p-3">
+      <label htmlFor={`nombre-${code}`} className="block text-sm font-semibold text-(--color-secondary)">
         Tu nombre
       </label>
       <input
@@ -53,9 +53,9 @@ export function ClaimButton({ code }: { code: string }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         autoComplete="name"
-        className="mt-1 min-h-[44px] w-full rounded-lg border border-[--color-line] px-3 text-base"
+        className="mt-1 min-h-[44px] w-full rounded-lg border border-(--color-line) px-3 text-base"
       />
-      {error && <p role="alert" className="mt-2 text-sm font-medium text-[--color-urgente]">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-sm font-medium text-(--color-urgente)">{error}</p>}
       <div className="mt-3 flex gap-2">
         <Button onClick={submit} disabled={saving || name.trim().length < 2} className="flex-1">
           {saving ? 'Guardando…' : 'Confirmar'}
