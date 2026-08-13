@@ -3,7 +3,7 @@
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { claimRequest, cancelClaim } from '@/lib/claims'
-import { fulfillRequest, cancelRequest } from '@/lib/requests'
+import { createRequest, fulfillRequest, cancelRequest, type CreateRequestInput } from '@/lib/requests'
 import { getClientIp } from '@/lib/request-ip'
 
 type Result<T = unknown> = ({ ok: true } & T) | { ok: false; error: string }
@@ -58,5 +58,23 @@ export async function cancelRequestAction(publicCode: string, manageToken: strin
     return { ok: true }
   } catch (e) {
     return fail(e)
+  }
+}
+
+export async function createRequestAction(
+  input: CreateRequestInput
+): Promise<Result<{ publicCode: string; manageToken: string; needsReview: boolean }>> {
+  try {
+    const ip = getClientIp(await headers())
+    const created = await createRequest(input, ip)
+    revalidatePath('/')
+    return { ok: true, ...created }
+  } catch (e) {
+    // Zod entrega varios errores; mostramos el primero, que es el más útil.
+    if (e && typeof e === 'object' && 'issues' in e) {
+      const issues = (e as { issues: { message: string }[] }).issues
+      return { ok: false, error: issues[0]?.message ?? 'Revisa los datos del formulario' }
+    }
+    return fail(e) as Result<{ publicCode: string; manageToken: string; needsReview: boolean }>
   }
 }
