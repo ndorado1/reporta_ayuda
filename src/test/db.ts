@@ -35,11 +35,19 @@ export async function resetTestDb() {
   )
 }
 
-/** Inserta Cali y la devuelve, que es lo que casi toda prueba necesita. */
+/**
+ * Inserta Cali y la devuelve, que es lo que casi toda prueba necesita.
+ * Idempotente: si Cali ya existe (p. ej. una prueba que crea varias
+ * solicitudes y llama esto más de una vez), devuelve la misma fila en vez
+ * de fallar por la unicidad de `slug`.
+ */
 export async function seedTestCity() {
-  const [city] = await testDb.insert(schema.cities).values({
+  const city = {
     slug: 'cali', name: 'Cali', department: 'Valle del Cauca',
     centerLat: 3.4516, centerLng: -76.532, defaultZoom: 12, position: 1,
-  }).returning()
-  return city
+  }
+  const [row] = await testDb.insert(schema.cities).values(city)
+    .onConflictDoUpdate({ target: schema.cities.slug, set: city })
+    .returning()
+  return row
 }
