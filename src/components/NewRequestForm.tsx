@@ -48,33 +48,43 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
     setSaving(true)
     setError(null)
 
-    const result = await createRequestAction({
-      citySlug,
-      title,
-      description,
-      urgency,
-      items: items.filter((i) => i.name.trim()),
-      requesterName,
-      whatsapp,
-      lat: coords.lat,
-      lng: coords.lng,
-      neighborhood,
-      addressText,
-      peopleCount: peopleCount ? Number(peopleCount) : undefined,
-      acceptsPrivacy: acceptsPrivacy as true,
-      website,
-    })
-
-    if (result.ok) {
-      saveMyRequest({
-        publicCode: result.publicCode,
-        manageToken: result.manageToken,
+    // Un corte de red a mitad de la petición no lanza un error "de
+    // servidor" (eso ya lo captura el try/catch de la action): rechaza la
+    // promesa del fetch aquí mismo. Sin este try/catch, "saving" se queda
+    // en true para siempre, el botón se congela en "Publicando…" y la
+    // única salida es recargar la página, perdiendo todo lo escrito.
+    try {
+      const result = await createRequestAction({
+        citySlug,
         title,
-        createdAt: new Date().toISOString(),
+        description,
+        urgency,
+        items: items.filter((i) => i.name.trim()),
+        requesterName,
+        whatsapp,
+        lat: coords.lat,
+        lng: coords.lng,
+        neighborhood,
+        addressText,
+        peopleCount: peopleCount ? Number(peopleCount) : undefined,
+        acceptsPrivacy: acceptsPrivacy as true,
+        website,
       })
-      setCreated({ publicCode: result.publicCode, manageToken: result.manageToken })
-    } else {
-      setError(result.error)
+
+      if (result.ok) {
+        saveMyRequest({
+          publicCode: result.publicCode,
+          manageToken: result.manageToken,
+          title,
+          createdAt: new Date().toISOString(),
+        })
+        setCreated({ publicCode: result.publicCode, manageToken: result.manageToken })
+      } else {
+        setError(result.error)
+        setSaving(false)
+      }
+    } catch {
+      setError('No pudimos enviar tu solicitud. Revisa tu conexión e inténtalo de nuevo.')
       setSaving(false)
     }
   }
