@@ -16,22 +16,35 @@ export function ClaimButton({ code }: { code: string }) {
   async function submit() {
     setSaving(true)
     setError(null)
-    const result = await claimAction({ publicCode: code, volunteerName: name })
-    if (result.ok) {
-      try {
-        const raw = localStorage.getItem('reporta-cali:claims')
-        const claims = raw ? JSON.parse(raw) : {}
-        claims[code] = result.claimToken
-        localStorage.setItem('reporta-cali:claims', JSON.stringify(claims))
-      } catch {
-        // Sin almacenamiento no podrá cancelar, pero el claim ya quedó hecho.
+    // try/catch/finally: sin esto, si la petición al servidor se pierde por
+    // un corte de red, la excepción se sale de esta función sin pasar por
+    // `setSaving(false)` y el botón queda congelado en "Guardando…" para
+    // siempre. Peor aún: el claim puede haberse creado en el servidor sin
+    // que la respuesta llegara, así que el token nunca se guarda en
+    // localStorage, ese voluntario no podrá cancelarlo, nadie más podrá
+    // reclamar la solicitud, y la familia ve "alguien va en camino" aunque
+    // no vaya nadie.
+    try {
+      const result = await claimAction({ publicCode: code, volunteerName: name })
+      if (result.ok) {
+        try {
+          const raw = localStorage.getItem('reporta-cali:claims')
+          const claims = raw ? JSON.parse(raw) : {}
+          claims[code] = result.claimToken
+          localStorage.setItem('reporta-cali:claims', JSON.stringify(claims))
+        } catch {
+          // Sin almacenamiento no podrá cancelar, pero el claim ya quedó hecho.
+        }
+        setOpen(false)
+        router.refresh()
+      } else {
+        setError(result.error)
       }
-      setOpen(false)
-      router.refresh()
-    } else {
-      setError(result.error)
+    } catch {
+      setError('No pudimos guardar el cambio. Revisa tu conexión e inténtalo de nuevo.')
+    } finally {
+      setSaving(false)
     }
-    setSaving(false)
   }
 
   if (!open) {
