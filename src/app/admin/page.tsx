@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { ADMIN_COOKIE, isValidAdminCookie } from '@/lib/admin-auth'
 import { listForModeration } from '@/lib/requests'
 import { hideAction } from './actions'
+import { DeleteRequestButton } from './DeleteRequestButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,9 +21,14 @@ export default async function AdminPage() {
         Primero lo marcado para revisión: reportes de la comunidad y envíos que
         superaron el límite por conexión.
       </p>
+      <p className="text-(--color-muted)">
+        <strong>Ocultar</strong> la retira del listado y del mapa, y se puede deshacer.{' '}
+        <strong>Borrar</strong> elimina los datos de esa persona sin vuelta atrás: úsalo
+        cuando alguien pida que se borren los suyos y haya perdido su enlace.
+      </p>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] border-collapse text-left">
+        <table className="w-full min-w-[820px] border-collapse text-left">
           <thead>
             <tr className="border-b border-(--color-line) text-sm text-(--color-muted)">
               <th className="py-2 pr-3">Solicitud</th>
@@ -44,14 +50,17 @@ export default async function AdminPage() {
                 <td className="py-3 pr-3">{row.reportCount}</td>
                 <td className="py-3 pr-3">{row.isHidden ? 'Oculta' : row.status}</td>
                 <td className="py-3">
-                  <form action={hideAction.bind(null, row.publicCode, !row.isHidden)}>
-                    <button
-                      type="submit"
-                      className="min-h-[44px] cursor-pointer rounded-lg border-2 border-(--color-primary) px-3 font-semibold transition-colors duration-150 hover:bg-slate-50"
-                    >
-                      {row.isHidden ? 'Mostrar' : 'Ocultar'}
-                    </button>
-                  </form>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <form action={hideAction.bind(null, row.publicCode, !row.isHidden)}>
+                      <button
+                        type="submit"
+                        className="min-h-[44px] cursor-pointer rounded-lg border-2 border-(--color-primary) px-3 font-semibold transition-colors duration-150 hover:bg-slate-50"
+                      >
+                        {row.isHidden ? 'Mostrar' : 'Ocultar'}
+                      </button>
+                    </form>
+                    <DeleteRequestButton code={row.publicCode} title={row.title} />
+                  </div>
                 </td>
               </tr>
             ))}

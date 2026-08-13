@@ -631,3 +631,27 @@ export async function setHidden(code: string, hidden: boolean): Promise<void> {
     .set({ isHidden: hidden, needsReview: false })
     .where(eq(requests.publicCode, code))
 }
+
+/**
+ * Borra la solicitud y todo lo que cuelga de ella. Irreversible: no queda
+ * ninguna copia.
+ *
+ * Existe además de `setHidden` porque ocultar deja los datos personales en la
+ * base, y a veces hay que borrarlos de verdad: alguien lo pide y perdió su
+ * enlace de gestión, o son datos de prueba. Cuando la persona sí conserva su
+ * enlace, `cancelRequest` es mejor opción — anonimiza igual de rápido pero
+ * conserva que hubo una necesidad en ese barrio, que es información útil para
+ * quien coordina la ayuda.
+ *
+ * Los ítems, ofrecimientos, eventos y reportes se van en cascada por sus
+ * claves foráneas (ver schema.ts), así que este DELETE basta.
+ *
+ * Devuelve false si no existía, para poder distinguir un código equivocado de
+ * un borrado hecho.
+ */
+export async function deleteRequest(code: string): Promise<boolean> {
+  const deleted = await db.delete(requests)
+    .where(eq(requests.publicCode, code))
+    .returning({ id: requests.id })
+  return deleted.length > 0
+}

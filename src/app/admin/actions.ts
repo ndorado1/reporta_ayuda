@@ -4,7 +4,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { ADMIN_COOKIE, checkAdminToken, isValidAdminCookie, signAdminCookie } from '@/lib/admin-auth'
-import { setHidden } from '@/lib/requests'
+import { setHidden, deleteRequest } from '@/lib/requests'
 
 export async function loginAction(formData: FormData) {
   const token = String(formData.get('token') ?? '')
@@ -29,6 +29,16 @@ async function requireAdmin() {
 export async function hideAction(code: string, hidden: boolean) {
   await requireAdmin()
   await setHidden(code, hidden)
+  revalidatePath('/admin')
+  revalidatePath('/')
+}
+
+export async function deleteAction(code: string) {
+  await requireAdmin()
+  const deleted = await deleteRequest(code)
+  // No hay tabla de auditoría ni papelera: el registro del servidor es lo
+  // único que queda para reconstruir qué pasó si alguien borra de más.
+  console.warn(`[admin] borrada la solicitud ${code} (existía: ${deleted})`)
   revalidatePath('/admin')
   revalidatePath('/')
 }
