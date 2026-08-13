@@ -7,6 +7,16 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+
+# Único valor que hace falta al construir: Next.js incrusta las variables
+# NEXT_PUBLIC_ en el JavaScript durante el build, así que ponerla solo en el
+# entorno de ejecución no serviría de nada. Es el dominio público, no un
+# secreto, y por eso sí puede quedar en la imagen. Ninguna otra variable se
+# declara aquí a propósito: la aplicación no necesita base de datos para
+# construirse, y un ARG queda grabado en el historial de capas.
+ARG NEXT_PUBLIC_SITE_URL=https://reportayuda.com
+ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
+
 RUN npm run build
 
 FROM node:22-alpine AS runner

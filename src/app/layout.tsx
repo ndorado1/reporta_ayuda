@@ -9,10 +9,40 @@ import './globals.css'
 // Autohospedada por next/font: sin llamadas a Google en tiempo de ejecución.
 const publicSans = Public_Sans({ subsets: ['latin'], display: 'swap' })
 
+const DESCRIPTION =
+  'Plataforma de ayuda durante la emergencia por el terremoto del 10 de agosto en Colombia.'
+
+// Base para las URLs absolutas que exigen las tarjetas de WhatsApp, Facebook
+// y demás: una ruta relativa no le sirve a nadie que reciba el enlace fuera
+// del sitio. Si la variable falta o está mal escrita caemos al dominio real
+// en vez de tumbar la aplicación entera por un error de configuración.
+function siteUrl(): URL {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://reportayuda.com')
+  } catch {
+    return new URL('https://reportayuda.com')
+  }
+}
+
 export const metadata: Metadata = {
+  metadataBase: siteUrl(),
   title: 'Reporta Ayuda — Coordinemos la ayuda tras el terremoto',
-  description:
-    'Publica qué necesitas y dónde, o encuentra a quién ayudar. Plataforma abierta para coordinar la ayuda tras el terremoto.',
+  description: DESCRIPTION,
+  openGraph: {
+    title: 'Reporta Ayuda',
+    description: DESCRIPTION,
+    url: '/',
+    siteName: 'Reporta Ayuda',
+    locale: 'es_CO',
+    type: 'website',
+  },
+  // WhatsApp lee las etiquetas de Open Graph; Twitter/X necesita además las
+  // suyas para mostrar la tarjeta grande en vez de un enlace pelado.
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Reporta Ayuda',
+    description: DESCRIPTION,
+  },
 }
 
 // Las ciudades activas viven en una tabla, no en una lista fija en el

@@ -9,8 +9,30 @@ export function SiteHeader({ cities }: { cities: City[] }) {
   return (
     <header className="sticky top-0 z-30 border-b border-(--color-line) bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-        <Link href="/" className="mr-auto text-lg font-bold tracking-tight text-(--color-primary)">
-          Reporta Ayuda
+        <Link href="/" className="mr-auto flex items-center gap-2">
+          {/* `img` y no `next/image`: la optimización de imágenes necesita
+              sharp en el contenedor, que no está instalado. Para un PNG de
+              4 KB que se sirve una vez y queda en caché, optimizarlo no
+              ahorra nada y sí añadiría un punto de fallo en producción.
+              Decorativa (alt vacío): el nombre que hay al lado ya la
+              describe, y repetirlo haría que un lector de pantalla dijera
+              lo mismo dos veces. */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/bandera-colombia.png"
+            alt=""
+            width={28}
+            height={28}
+            className="h-7 w-7 shrink-0"
+          />
+          <span className="flex flex-col leading-tight">
+            <span className="text-lg font-bold tracking-tight text-(--color-primary)">
+              Reporta Ayuda
+            </span>
+            <span className="text-xs text-(--color-muted)">
+              Ayuda tras el terremoto del 10 de agosto
+            </span>
+          </span>
         </Link>
         <Link
           href="/mis-solicitudes"
