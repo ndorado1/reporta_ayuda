@@ -22,7 +22,7 @@ export function RequestCreated({
 
   const phone = normalizePhone(whatsapp)
   const selfLink = phone
-    ? buildWhatsAppLink(phone, `Enlace para administrar mi solicitud "${title}" en Reporta Cali: ${url}`)
+    ? buildWhatsAppLink(phone, `Enlace para administrar mi solicitud "${title}" en Reporta Ayuda: ${url}`)
     : null
 
   async function copy() {

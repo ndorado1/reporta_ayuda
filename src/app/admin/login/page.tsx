@@ -1,6 +1,6 @@
 import { loginAction } from '../actions'
 
-export const metadata = { title: 'Acceso — Reporta Cali' }
+export const metadata = { title: 'Acceso — Reporta Ayuda' }
 
 export default async function AdminLoginPage({
   searchParams,

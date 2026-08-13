@@ -1,4 +1,4 @@
-export const metadata = { title: 'Política de datos — Reporta Cali' }
+export const metadata = { title: 'Política de datos — Reporta Ayuda' }
 
 export default function PrivacyPage() {
   return (
@@ -8,7 +8,7 @@ export default function PrivacyPage() {
       </h1>
 
       <p className="text-(--color-secondary)">
-        Reporta Cali existe para que la ayuda llegue a quien la necesita después del
+        Reporta Ayuda existe para que la ayuda llegue a quien la necesita después del
         terremoto. Para eso necesitamos unos pocos datos tuyos. Esto es exactamente
         qué guardamos, qué mostramos y por cuánto tiempo.
       </p>

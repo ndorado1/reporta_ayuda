@@ -10,7 +10,7 @@ export function SiteHeader({ cities }: { cities: City[] }) {
     <header className="sticky top-0 z-30 border-b border-(--color-line) bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
         <Link href="/" className="mr-auto text-lg font-bold tracking-tight text-(--color-primary)">
-          Reporta Cali
+          Reporta Ayuda
         </Link>
         <Link
           href="/mis-solicitudes"

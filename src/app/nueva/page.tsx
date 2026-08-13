@@ -3,7 +3,7 @@ import { NewRequestForm } from '@/components/NewRequestForm'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata = { title: 'Pedir ayuda — Reporta Cali' }
+export const metadata = { title: 'Pedir ayuda — Reporta Ayuda' }
 
 export default async function NewRequestPage() {
   const cities = await listCities()

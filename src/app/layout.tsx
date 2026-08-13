@@ -10,7 +10,7 @@ import './globals.css'
 const publicSans = Public_Sans({ subsets: ['latin'], display: 'swap' })
 
 export const metadata: Metadata = {
-  title: 'Reporta Cali — Ayuda tras el terremoto',
+  title: 'Reporta Ayuda — Coordinemos la ayuda tras el terremoto',
   description:
     'Publica qué necesitas y dónde, o encuentra a quién ayudar. Plataforma abierta para coordinar la ayuda tras el terremoto.',
 }
@@ -47,7 +47,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Link href="/privacidad" className="cursor-pointer underline">Política de datos</Link>
           </nav>
           <p className="mt-3">
-            Reporta Cali es una iniciativa ciudadana sin ánimo de lucro para coordinar la
+            Reporta Ayuda es una iniciativa ciudadana sin ánimo de lucro para coordinar la
             ayuda tras el terremoto.
           </p>
         </footer>

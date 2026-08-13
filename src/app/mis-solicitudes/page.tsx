@@ -1,6 +1,6 @@
 import { MyRequestsList } from '@/components/MyRequestsList'
 
-export const metadata = { title: 'Mis solicitudes — Reporta Cali' }
+export const metadata = { title: 'Mis solicitudes — Reporta Ayuda' }
 
 export default function MyRequestsPage() {
   return (

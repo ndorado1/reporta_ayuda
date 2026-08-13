@@ -26,6 +26,6 @@ export async function POST(
     return NextResponse.json({ error: 'Esta solicitud ya no está disponible' }, { status: 404 })
   }
 
-  const message = `Hola, te escribo por la solicitud "${contact.title}" que publicaste en Reporta Cali. ¿Todavía necesitas ayuda?`
+  const message = `Hola, te escribo por la solicitud "${contact.title}" que publicaste en Reporta Ayuda. ¿Todavía necesitas ayuda?`
   return NextResponse.json({ link: buildWhatsAppLink(contact.phone, message) })
 }
