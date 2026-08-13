@@ -94,7 +94,7 @@ un `INSERT`, sin cambiar código ni volver a desplegar.
 | `title` | text | |
 | `description` | text | opcional |
 | `urgency` | enum | `alta` \| `media` \| `baja` |
-| `status` | enum | `abierta` \| `en_atencion` \| `atendida` \| `cancelada` |
+| `status` | enum | `abierta` \| `en_atencion` \| `atendida` \| `cancelada` \| `archivada` |
 | `requester_name` | text | |
 | `whatsapp` | text | formato E.164, nunca expuesto públicamente |
 | `lat`, `lng` | double | |
@@ -167,6 +167,16 @@ Al guardar se genera un `manage_token` aleatorio de 32 bytes. Se almacena solo
 su hash. La respuesta muestra el enlace `/s/{public_code}?t={token}` de forma
 prominente, con instrucción explícita de guardarlo, y lo persiste en
 `localStorage` bajo "Mis solicitudes". Se registra un evento `request_created`.
+
+Ese `localStorage` es frágil: en modo incógnito, al limpiar el navegador o al
+cambiar de teléfono, el enlace se pierde y la solicitud queda sin nadie que
+pueda cerrarla. Por eso la pantalla de confirmación ofrece un botón
+"Enviarme el enlace por WhatsApp", que abre `wa.me` hacia el número que la
+persona acaba de registrar con el enlace en el mensaje. Es el respaldo más
+probable de sobrevivir, porque queda en su propio chat.
+
+Además, las solicitudes `abierta` sin ninguna actividad durante 14 días se
+archivan automáticamente, de modo que las huérfanas no se acumulen en el mapa.
 
 ### Estados
 
@@ -242,10 +252,61 @@ Diseño móvil primero, asumiendo gama baja, datos móviles y batería limitada.
 - **Mis solicitudes** — lo guardado en este navegador.
 - Botón fijo de "Pedir ayuda" visible en toda la aplicación.
 
+## Privacidad y datos personales
+
+La plataforma trata datos personales de población damnificada: nombre, número de
+WhatsApp y la ubicación de su vivienda. Esto obliga a cumplir la Ley 1581 de
+2012 y, sobre todo, a no exponer a quien ya está en situación vulnerable.
+
+### Autorización
+
+El formulario incluye una casilla obligatoria, sin marcar por defecto, con texto
+breve: qué se publica, qué no, y por cuánto tiempo. Enlaza a `/privacidad`.
+
+### Página `/privacidad`
+
+Redactada en lenguaje sencillo, para leerse en un celular. Debe decir con
+exactitud:
+
+- Qué se guarda: nombre, WhatsApp, ubicación, descripción y lista de necesidades.
+- Qué se muestra en público: todo lo anterior **salvo el número de WhatsApp**,
+  que solo se entrega a quien pulsa el botón de contacto.
+- Que los datos se conservan **únicamente mientras dure la emergencia**.
+- Que no se venden, no se comparten con terceros, no se usan con fines
+  publicitarios, y que el sitio no incluye rastreadores ni analítica.
+- Que al cerrar la operación de ayuda **se elimina toda la base de datos**.
+- Cómo pedir el borrado inmediato de una solicitud, en cualquier momento.
+
+La página no afirma que no se almacenen datos, porque sí se almacenan: el mapa y
+el botón de WhatsApp no funcionarían de otro modo. Una promesa falsa en el aviso
+de privacidad expone al proyecto y engaña a las personas a las que busca
+proteger.
+
+### Retención
+
+A los 60 días de quedar `atendida` o `cancelada`, se borra de la solicitud el
+nombre, el WhatsApp, la dirección y las coordenadas exactas. Se
+conservan solo ciudad, barrio, ítems y fechas, útiles para entender qué faltó y
+dónde. Al cerrar la operación se elimina todo.
+
+Cualquier persona puede pedir el borrado de su solicitud desde su enlace de
+gestión, sin esperar el plazo.
+
+La anonimización a 60 días y el archivado a 14 días los ejecuta un mismo script
+de mantenimiento, invocado una vez al día por cron en el VPS. Es idempotente:
+correrlo dos veces no cambia el resultado, y si un día no corre, al siguiente se
+pone al día. La expiración de claims no depende de él, porque necesita resolverse
+en minutos, no cada 24 horas.
+
 ## Abuso y moderación
 
-- Límite por IP: 3 solicitudes por hora, 10 claims por hora, 20 consultas de
+- Límite por IP: 20 solicitudes por hora, 20 claims por hora, 40 consultas de
   contacto por hora.
+- Al excederse el límite, la solicitud **se publica igual** pero queda marcada
+  para revisión en `/admin`; no se rechaza. Los operadores móviles colombianos
+  usan CGNAT, así que miles de personas comparten una misma IP pública: un
+  rechazo duro dejaría sin publicar a un barrio entero conectado por datos.
+  Bloquear a alguien que necesita agua cuesta más que revisar spam a mano.
 - Campo trampa oculto contra bots.
 - Validación de número celular colombiano antes de guardar.
 - Botón "Reportar" en cada tarjeta.
@@ -260,8 +321,10 @@ Diseño móvil primero, asumiendo gama baja, datos móviles y batería limitada.
 
 Vitest sobre la lógica cuyo fallo causa daño real: transiciones de estado,
 expiración de claims, unicidad del claim activo, límites por IP, verificación
-del token de gestión, filtrado por ciudad, validación del pin contra el centro
-de la ciudad y normalización de números a formato `wa.me`.
+del token de gestión y del token de claim, filtrado por ciudad, validación del
+pin contra el centro de la ciudad, normalización de números a formato `wa.me`, y
+el script de mantenimiento: que anonimice lo que debe, que no toque lo que no, y
+que sea idempotente.
 
 Playwright sobre dos recorridos: crear una solicitud y verla en el listado;
 reclamarla, marcarla atendida y confirmar que desaparece de las activas.
@@ -279,3 +342,9 @@ la cadena de conexión y el token de administración. Certificado TLS con certbo
 - **Precisión de la ubicación.** El pin lo coloca la persona; puede estar
   desplazado. La dirección en texto sirve de respaldo.
 - **Abandono de claims.** Cubierto por el vencimiento a 6 horas.
+- **Spam publicado.** Al no rechazar por límite de tasa, contenido basura puede
+  aparecer en el mapa hasta que alguien lo oculte desde `/admin`. Es el precio
+  deliberado de no bloquear a víctimas detrás de CGNAT.
+- **Pérdida del enlace de gestión.** Mitigada con el respaldo por WhatsApp y el
+  archivado automático, pero seguirá ocurriendo; sin cuentas no hay recuperación
+  posible.
