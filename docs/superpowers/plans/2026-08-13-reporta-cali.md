@@ -6361,7 +6361,12 @@ services:
       ADMIN_TOKEN: ${ADMIN_TOKEN}
       ADMIN_COOKIE_SECRET: ${ADMIN_COOKIE_SECRET}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
-    # El puerto solo escucha en localhost: nginx es la única puerta de entrada.
+    # El `127.0.0.1:` del mapeo de puertos no es opcional ni cosmético: sin
+    # él, la aplicación quedaría accesible desde internet sin pasar por
+    # nginx, y entonces `X-Real-IP` la fijaría el propio cliente. El límite
+    # que protege los números de teléfono de las personas que pidieron
+    # ayuda se evadiría enviando una cabecera distinta en cada petición.
+    # nginx debe ser la única puerta de entrada.
 ```
 
 - [ ] **Step 4: Escribir la configuración de nginx**
@@ -6470,6 +6475,33 @@ docker compose up -d --build
 - `https://TU_DOMINIO/admin` pide clave.
 - En los registros de nginx aparecen IPs reales de visitantes, no `127.0.0.1`.
 - `npm run maintenance` corre a mano sin errores.
+
+### Comprobación de seguridad obligatoria
+
+El límite que impide recolectar los números de teléfono de quienes pidieron
+ayuda depende por completo de que nginx sea la única puerta de entrada. Si la
+aplicación queda accesible directamente, el propio cliente controla la
+cabecera `X-Real-IP` y el límite se evade enviando una distinta en cada
+petición.
+
+Desde **otra máquina**, comprobar que el puerto de la aplicación no responde:
+
+```bash
+curl -m 5 http://IP_DEL_SERVIDOR:3000/
+```
+
+Debe fallar por tiempo de espera o conexión rechazada. Si responde con la
+página, hay que corregirlo antes de anunciar la plataforma: revisar el mapeo
+`127.0.0.1:3000:3000` del compose y el cortafuegos del servidor.
+
+Y comprobar que la cabecera llega bien:
+
+```bash
+curl -s -H 'X-Real-IP: 1.2.3.4' https://TU_DOMINIO/api/events | head -c 200
+```
+
+nginx debe sobrescribir ese valor con la IP real de quien llama. Si en los
+registros aparece `1.2.3.4`, falta `proxy_set_header X-Real-IP $remote_addr`.
 
 ## Cerrar la operación
 
