@@ -15,6 +15,15 @@ export const metadata: Metadata = {
     'Publica qué necesitas y dónde, o encuentra a quién ayudar. Plataforma abierta para coordinar la ayuda tras el terremoto.',
 }
 
+// Las ciudades activas viven en una tabla, no en una lista fija en el
+// código, para poder habilitar una ciudad nueva con un INSERT y sin
+// desplegar (p. ej. si el sismo golpea otra ciudad mañana). Sin esta
+// revalidación, el layout quedaría prerrenderizado como estático y ese
+// INSERT no se vería hasta el siguiente build. Un minuto de desfase es
+// irrelevante para una lista que cambia rarísimo, y evita el costo de
+// `force-dynamic`, que renderizaría todo el layout en cada petición.
+export const revalidate = 60
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cities = await listCities()
 
