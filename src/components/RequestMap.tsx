@@ -39,7 +39,7 @@ export default function RequestMap({
       className="h-[60vh] w-full rounded-xl border border-(--color-line)"
     >
       <TileLayer
-        attribution='&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        attribution='&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright" rel="noreferrer">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       {items.map((item) => (

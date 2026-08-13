@@ -74,7 +74,7 @@ export default function LocationPicker({
         className="h-64 w-full rounded-xl border border-(--color-line)"
       >
         <TileLayer
-          attribution='&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          attribution='&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright" rel="noreferrer">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <Recenter lat={lat} lng={lng} />
