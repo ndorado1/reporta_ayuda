@@ -1,0 +1,53 @@
+import 'dotenv/config'
+import { drizzle } from 'drizzle-orm/postgres-js'
+import { migrate } from 'drizzle-orm/postgres-js/migrator'
+import postgres from 'postgres'
+import { sql } from 'drizzle-orm'
+import * as schema from '@/db/schema'
+
+const url = process.env.TEST_DATABASE_URL
+if (!url) throw new Error('Falta TEST_DATABASE_URL')
+
+// Salvaguarda: esta utilidad hace TRUNCATE de todas las tablas. Si por una
+// variable de entorno mal puesta apuntara a la base de desarrollo o de
+// producción, borraría datos de personas damnificadas sin aviso. Abortamos
+// en vez de arriesgarnos.
+const testDbName = new URL(url).pathname.replace(/^\//, '')
+if (!testDbName.endsWith('_test')) {
+  throw new Error(
+    `Rechazo truncar "${testDbName}": la base de pruebas debe terminar en _test`
+  )
+}
+
+const client = postgres(url, { max: 1 })
+export const testDb = drizzle(client, { schema })
+
+let migrated = false
+
+/** Deja la base vacía y migrada antes de cada prueba. */
+export async function resetTestDb() {
+  if (!migrated) {
+    await migrate(testDb, { migrationsFolder: './drizzle' })
+    migrated = true
+  }
+  await testDb.execute(
+    sql`TRUNCATE events, reports, claims, request_items, requests, rate_limits, cities RESTART IDENTITY CASCADE`
+  )
+}
+
+/**
+ * Inserta Cali y la devuelve, que es lo que casi toda prueba necesita.
+ * Idempotente: si Cali ya existe (p. ej. una prueba que crea varias
+ * solicitudes y llama esto más de una vez), devuelve la misma fila en vez
+ * de fallar por la unicidad de `slug`.
+ */
+export async function seedTestCity() {
+  const city = {
+    slug: 'cali', name: 'Cali', department: 'Valle del Cauca',
+    centerLat: 3.4516, centerLng: -76.532, defaultZoom: 12, position: 1,
+  }
+  const [row] = await testDb.insert(schema.cities).values(city)
+    .onConflictDoUpdate({ target: schema.cities.slug, set: city })
+    .returning()
+  return row
+}

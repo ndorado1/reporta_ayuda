@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      IP_HASH_SECRET: ${IP_HASH_SECRET}
+      ADMIN_TOKEN: ${ADMIN_TOKEN}
+      ADMIN_COOKIE_SECRET: ${ADMIN_COOKIE_SECRET}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+    # El puerto solo escucha en localhost: nginx es la única puerta de entrada.
