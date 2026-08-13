@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
-import { sql } from 'drizzle-orm'
+import { sql, eq } from 'drizzle-orm'
 import { testDb, resetTestDb, seedTestCity } from '@/test/db'
-import { cities, requests } from '@/db/schema'
+import { cities, requests, claims } from '@/db/schema'
 import { createRequest, listRequests, listRequestsForMap, getRequestByCode, fulfillRequest, cancelRequest, getContactPhone, PAGE_SIZE } from './requests'
 import { claimRequest } from './claims'
 
@@ -278,6 +278,17 @@ describe('listRequestsForMap', () => {
     expect(item).not.toHaveProperty('itemsPreview')
   })
 
+  // Sin filtro de ciudad, el mapa mezcla puntos de las cinco ciudades a la
+  // vez: un punto sin barrio necesita el nombre de la ciudad para que quien
+  // mira el mapa sepa qué está viendo sin tener que abrir la solicitud.
+  it('incluye el nombre de la ciudad', async () => {
+    await seedTestCity()
+    await createRequest(input({ neighborhood: '' }), '1.1.1.1')
+
+    const [item] = await listRequestsForMap({})
+    expect(item.cityName).toBe('Cali')
+  })
+
   it('respeta los mismos filtros que la lista (ciudad, urgencia, estados visibles por defecto)', async () => {
     await seedTestCity()
     const a = await createRequest(input({ urgency: 'alta' }), '1.1.1.1')
@@ -350,6 +361,26 @@ describe('cierre de solicitudes', () => {
     expect(row.requesterName).not.toBe('Ana Ruiz')
     expect(row.anonymizedAt).not.toBeNull()
     expect(row.neighborhood).toBe('El Diamante')
+  })
+
+  // Cadena que se rompía antes de esta corrección: cancelRequest fija
+  // anonymizedAt de inmediato, y anonymizeOldRequests solo mira filas con
+  // anonymizedAt nulo — así que una solicitud cancelada nunca vuelve a pasar
+  // por el mantenimiento, y el nombre del voluntario que ya se había
+  // ofrecido no se anonimizaba jamás. Cancelar es cerrar, y /privacidad
+  // promete que el nombre del voluntario se anonimiza cuando la solicitud
+  // queda cerrada.
+  it('anonimiza también el nombre del voluntario activo al cancelar', async () => {
+    await seedTestCity()
+    const a = await createRequest(input(), '1.1.1.1')
+    await claimRequest({ publicCode: a.publicCode, volunteerName: 'Luis Pérez' }, '2.2.2.2')
+
+    await cancelRequest(a.publicCode, a.manageToken)
+
+    const [claim] = await testDb.select().from(claims)
+      .where(eq(claims.status, 'cancelado'))
+    expect(claim.volunteerName).toBe('Anónimo')
+    expect(claim.volunteerWhatsapp).toBeNull()
   })
 
   it('borra la descripción libre al cancelar: puede contener lo mismo que el nombre o la dirección', async () => {

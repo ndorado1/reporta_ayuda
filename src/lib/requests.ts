@@ -162,6 +162,7 @@ export type MapRequestItem = {
   title: string
   urgency: Urgency
   neighborhood: string | null
+  cityName: string
   lat: number
   lng: number
 }
@@ -296,6 +297,10 @@ export async function listRequestsForMap(filters: MapFilters): Promise<MapReques
       title: requests.title,
       urgency: requests.urgency,
       neighborhood: requests.neighborhood,
+      // La tabla ya está unida para filtrar por ciudad: traer el nombre no
+      // cuesta una consulta aparte. Sin él, un mapa sin filtro de ciudad (las
+      // cinco a la vez) no deja saber de cuál es un punto sin barrio.
+      cityName: cities.name,
       lat: requests.lat,
       lng: requests.lng,
     })
@@ -534,8 +539,15 @@ export async function cancelRequest(code: string, manageToken: string): Promise<
         anonymizedAt: new Date(),
       })
       .where(eq(requests.id, owner.id))
+    // El voluntario que se había ofrecido tiene el mismo derecho al olvido
+    // que quien pidió ayuda: cancelar es cerrar (fija anonymizedAt de una
+    // vez), y anonymizeOldRequests nunca vuelve a tocar una fila que ya
+    // tiene anonymizedAt, así que sin esto el nombre del voluntario se
+    // quedaría aquí para siempre. volunteerWhatsapp siempre es null hoy
+    // (claimAction no acepta teléfono), pero se limpia igual para que un
+    // futuro campo conectado no quede atrás sin que nada avise.
     await tx.update(claims)
-      .set({ status: 'cancelado' })
+      .set({ status: 'cancelado', volunteerName: 'Anónimo', volunteerWhatsapp: null })
       .where(and(eq(claims.requestId, owner.id), eq(claims.status, 'activo')))
   })
 }

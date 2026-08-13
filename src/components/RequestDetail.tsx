@@ -69,7 +69,8 @@ export function RequestDetail({ detail, token }: { detail: Detail; token: string
       <RequestMap
         items={[{
           publicCode: detail.publicCode, title: detail.title, urgency: detail.urgency,
-          neighborhood: detail.neighborhood, lat: detail.lat, lng: detail.lng,
+          neighborhood: detail.neighborhood, cityName: detail.cityName,
+          lat: detail.lat, lng: detail.lng,
         }]}
         center={{ lat: detail.lat, lng: detail.lng }}
         zoom={16}

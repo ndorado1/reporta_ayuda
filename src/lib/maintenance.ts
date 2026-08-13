@@ -49,7 +49,10 @@ export async function anonymizeOldRequests(): Promise<number> {
     if (rows.length > 0) {
       await tx
         .update(claims)
-        .set({ volunteerName: 'Anónimo' })
+        // volunteerWhatsapp siempre es null hoy (claimAction no acepta
+        // teléfono), pero se limpia igual: si algún día se conecta ese
+        // campo, este mantenimiento no debe dejarlo atrás sin aviso.
+        .set({ volunteerName: 'Anónimo', volunteerWhatsapp: null })
         .where(inArray(claims.requestId, rows.map((r) => r.id)))
     }
 

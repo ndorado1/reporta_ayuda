@@ -50,7 +50,7 @@ export default function RequestMap({
         >
           <Popup>
             <strong className="block text-base">{item.title}</strong>
-            {item.neighborhood && <span className="text-sm">{item.neighborhood}</span>}
+            <span className="text-sm">{item.neighborhood ?? item.cityName}</span>
             <Link href={`/s/${item.publicCode}`} className="mt-2 block font-semibold text-(--color-cta) underline">
               Ver solicitud
             </Link>
