@@ -3018,6 +3018,7 @@ export function CitySelect({ cities }: { cities: Option[] }) {
 Crear `src/components/SiteHeader.tsx`:
 
 ```tsx
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { CitySelect } from './CitySelect'
 import { NotificationBell } from './NotificationBell'
@@ -3031,8 +3032,14 @@ export function SiteHeader({ cities }: { cities: City[] }) {
         <Link href="/" className="mr-auto text-lg font-bold tracking-tight text-[--color-primary]">
           Reporta Cali
         </Link>
-        <CitySelect cities={cities} />
-        <NotificationBell />
+        {/* `useSearchParams` exige una frontera de Suspense para que Next
+            pueda prerrenderizar; sin ella, `next build` falla. */}
+        <Suspense fallback={null}>
+          <CitySelect cities={cities} />
+        </Suspense>
+        <Suspense fallback={null}>
+          <NotificationBell />
+        </Suspense>
       </div>
     </header>
   )
@@ -3062,6 +3069,14 @@ import './globals.css'
 
 // Autohospedada por next/font: sin llamadas a Google en tiempo de ejecución.
 const publicSans = Public_Sans({ subsets: ['latin'], display: 'swap' })
+
+// El layout lee las ciudades de la base. Sin esto, Next lo prerrenderiza
+// una sola vez y la lista queda congelada hasta el próximo despliegue, lo
+// que rompería la razón de modelar `cities` como tabla: habilitar una
+// ciudad nueva con un INSERT durante la emergencia. Un minuto de desfase
+// es irrelevante; `force-dynamic` costaría renderizar el layout entero en
+// cada petición.
+export const revalidate = 60
 
 export const metadata: Metadata = {
   title: 'Reporta Cali — Ayuda tras el terremoto',
