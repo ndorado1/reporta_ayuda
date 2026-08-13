@@ -111,6 +111,11 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    // Las pruebas de integración comparten una sola base y resetTestDb()
+    // la trunca. En paralelo se pisan: un archivo vacía la base mientras
+    // otro está insertando. Medido: 21 fallos de 50 con paralelismo,
+    // 0 sin él. Una base por archivo sería más rápida y mucho más compleja.
+    fileParallelism: false,
   },
 })
 ```
@@ -508,7 +513,8 @@ git commit -m "feat: distancia entre coordenadas y validación del pin contra la
 - Produces:
   - Tablas `cities`, `requests`, `requestItems`, `claims`, `events`, `reports`, `rateLimits`.
   - `db` — instancia de Drizzle.
-  - `withTestDb(fn)` — ejecuta una prueba contra `TEST_DATABASE_URL` con la base limpia.
+  - `resetTestDb()` — deja la base de pruebas vacía y migrada; se llama en `beforeEach`.
+  - `seedTestCity()` — inserta Cali de forma idempotente y la devuelve.
   - Tipos `City`, `Request`, `NewRequest`, `Claim`, `Event`.
 
 - [ ] **Step 1: Escribir el esquema**
@@ -778,12 +784,21 @@ export async function resetTestDb() {
   )
 }
 
-/** Inserta Cali y la devuelve, que es lo que casi toda prueba necesita. */
+/**
+ * Inserta Cali y la devuelve, que es lo que casi toda prueba necesita.
+ * Idempotente: varias pruebas crean más de una solicitud y la llaman una vez
+ * por cada una, así que una segunda llamada debe devolver la misma fila en
+ * vez de violar la unicidad de `slug`.
+ */
 export async function seedTestCity() {
-  const [city] = await testDb.insert(schema.cities).values({
-    slug: 'cali', name: 'Cali', department: 'Valle del Cauca',
-    centerLat: 3.4516, centerLng: -76.532, defaultZoom: 12, position: 1,
-  }).returning()
+  const [city] = await testDb
+    .insert(schema.cities)
+    .values({
+      slug: 'cali', name: 'Cali', department: 'Valle del Cauca',
+      centerLat: 3.4516, centerLng: -76.532, defaultZoom: 12, position: 1,
+    })
+    .onConflictDoUpdate({ target: schema.cities.slug, set: { name: 'Cali' } })
+    .returning()
   return city
 }
 ```
