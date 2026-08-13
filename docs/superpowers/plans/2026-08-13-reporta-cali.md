@@ -22,6 +22,11 @@
 - **Sin `transform` en hover.** Transiciones solo de color, fondo, borde, opacidad y sombra, de 150 a 200 ms. Se respeta `prefers-reduced-motion`.
 - **Iconos:** SVG de Lucide (`lucide-react`). Nunca emojis como iconos.
 - **Fuente:** Public Sans en todos los niveles, cargada con `next/font/google`. No se enlaza a `fonts.googleapis.com` en tiempo de ejecución.
+- **Sintaxis de los tokens de color en Tailwind v4:** se escriben con
+  paréntesis, `bg-(--color-cta)`, no con corchetes. Con corchetes y una
+  variable pelada —`bg-[--color-cta]`— Tailwind v4 no la reconoce como color
+  y **no genera ninguna regla**: el elemento queda con fondo transparente y
+  color heredado, que fue justo lo que dejó los botones invisibles.
 - **Paleta:** `#0F172A` primario, `#334155` secundario, `#0369A1` CTA, `#F8FAFC` fondo, `#020617` texto. Urgencias: alta `#B91C1C`, media `#B45309`, baja `#15803D`. WhatsApp: fondo `#067647` con texto blanco.
 - **El número de WhatsApp nunca sale en HTML ni en JSON de listados.** Solo por el endpoint de contacto.
 - **Todo `ip_hash` es HMAC-SHA256 con `IP_HASH_SECRET`.** Nunca `sha256(ip)` a secas.
@@ -3067,13 +3072,13 @@ export function CitySelect({ cities }: { cities: Option[] }) {
   }
 
   return (
-    <label className="flex items-center gap-2 text-sm font-medium text-[--color-secondary]">
+    <label className="flex items-center gap-2 text-sm font-medium text-(--color-secondary)">
       <MapPin aria-hidden="true" className="h-5 w-5 shrink-0" />
       <span className="sr-only">Ciudad</span>
       <select
         value={activeSlug}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-[44px] cursor-pointer rounded-lg border border-[--color-line] bg-white px-3 py-2 text-base font-semibold text-[--color-ink] transition-colors duration-150 hover:border-[--color-cta]"
+        className="min-h-[44px] cursor-pointer rounded-lg border border-(--color-line) bg-white px-3 py-2 text-base font-semibold text-(--color-ink) transition-colors duration-150 hover:border-(--color-cta)"
       >
         <option value={ALL_CITIES}>Todas las ciudades</option>
         {cities.map((city) => (
@@ -3099,9 +3104,9 @@ type City = { slug: string; name: string }
 
 export function SiteHeader({ cities }: { cities: City[] }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-[--color-line] bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-(--color-line) bg-white/95 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
-        <Link href="/" className="mr-auto text-lg font-bold tracking-tight text-[--color-primary]">
+        <Link href="/" className="mr-auto text-lg font-bold tracking-tight text-(--color-primary)">
           Reporta Cali
         </Link>
         {/* `useSearchParams` exige una frontera de Suspense para que Next
@@ -3161,7 +3166,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="es-CO">
-      <body className={`${publicSans.className} min-h-dvh bg-[--color-background]`}>
+      <body className={`${publicSans.className} min-h-dvh bg-(--color-background)`}>
         <a href="#contenido" className="skip-link">Saltar al contenido</a>
         <SiteHeader cities={cities.map((c) => ({ slug: c.slug, name: c.name }))} />
         <main id="contenido" className="mx-auto max-w-6xl px-4 pb-28 pt-4">
@@ -3171,7 +3176,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Acción principal siempre alcanzable con el pulgar. */}
         <Link
           href="/nueva"
-          className="fixed bottom-4 left-1/2 z-40 flex min-h-[52px] -translate-x-1/2 cursor-pointer items-center gap-2 rounded-full bg-[--color-cta] px-6 text-base font-semibold text-white shadow-lg transition-colors duration-150 hover:bg-[--color-cta-hover]"
+          className="fixed bottom-4 left-1/2 z-40 flex min-h-[52px] -translate-x-1/2 cursor-pointer items-center gap-2 rounded-full bg-(--color-cta) px-6 text-base font-semibold text-white shadow-lg transition-colors duration-150 hover:bg-(--color-cta-hover)"
         >
           <Plus aria-hidden="true" className="h-5 w-5" />
           Pedir ayuda
@@ -3285,17 +3290,17 @@ type Urgency = 'alta' | 'media' | 'baja'
 const STYLES: Record<Urgency, { label: string; className: string; Icon: typeof Clock }> = {
   alta: {
     label: 'Urgencia alta',
-    className: 'bg-[--color-urgente-soft] text-[--color-urgente]',
+    className: 'bg-(--color-urgente-soft) text-(--color-urgente)',
     Icon: AlertTriangle,
   },
   media: {
     label: 'Urgencia media',
-    className: 'bg-[--color-media-soft] text-[--color-media]',
+    className: 'bg-(--color-media-soft) text-(--color-media)',
     Icon: Clock,
   },
   baja: {
     label: 'Urgencia baja',
-    className: 'bg-[--color-baja-soft] text-[--color-baja]',
+    className: 'bg-(--color-baja-soft) text-(--color-baja)',
     Icon: ArrowDown,
   },
 }
@@ -3320,15 +3325,15 @@ type Status = 'abierta' | 'en_atencion' | 'atendida' | 'cancelada' | 'archivada'
 
 export function StatusBadge({ status, claimedBy }: { status: Status; claimedBy?: string | null }) {
   const map = {
-    abierta: { label: 'Sin atender', className: 'bg-slate-100 text-[--color-secondary]', Icon: CircleDot },
+    abierta: { label: 'Sin atender', className: 'bg-slate-100 text-(--color-secondary)', Icon: CircleDot },
     en_atencion: {
       label: claimedBy ? `${claimedBy} va en camino` : 'Alguien va en camino',
-      className: 'bg-sky-50 text-[--color-cta]',
+      className: 'bg-sky-50 text-(--color-cta)',
       Icon: Truck,
     },
-    atendida: { label: 'Atendida', className: 'bg-[--color-baja-soft] text-[--color-baja]', Icon: CheckCircle2 },
-    cancelada: { label: 'Cancelada', className: 'bg-slate-100 text-[--color-muted]', Icon: XCircle },
-    archivada: { label: 'Archivada', className: 'bg-slate-100 text-[--color-muted]', Icon: Archive },
+    atendida: { label: 'Atendida', className: 'bg-(--color-baja-soft) text-(--color-baja)', Icon: CheckCircle2 },
+    cancelada: { label: 'Cancelada', className: 'bg-slate-100 text-(--color-muted)', Icon: XCircle },
+    archivada: { label: 'Archivada', className: 'bg-slate-100 text-(--color-muted)', Icon: Archive },
   }[status]
 
   return (
@@ -3351,10 +3356,10 @@ type Variant = 'primary' | 'secondary' | 'whatsapp' | 'danger'
 
 // Sin transform en hover: en gama baja produce tirones y no aporta nada.
 const VARIANTS: Record<Variant, string> = {
-  primary: 'bg-[--color-cta] text-white hover:bg-[--color-cta-hover]',
-  secondary: 'bg-white text-[--color-primary] border-2 border-[--color-primary] hover:bg-slate-50',
-  whatsapp: 'bg-[--color-whatsapp] text-white hover:bg-[--color-whatsapp-hover]',
-  danger: 'bg-white text-[--color-urgente] border-2 border-[--color-urgente] hover:bg-[--color-urgente-soft]',
+  primary: 'bg-(--color-cta) text-white hover:bg-(--color-cta-hover)',
+  secondary: 'bg-white text-(--color-primary) border-2 border-(--color-primary) hover:bg-slate-50',
+  whatsapp: 'bg-(--color-whatsapp) text-white hover:bg-(--color-whatsapp-hover)',
+  danger: 'bg-white text-(--color-urgente) border-2 border-(--color-urgente) hover:bg-(--color-urgente-soft)',
 }
 
 export function Button({
@@ -3511,7 +3516,7 @@ export function WhatsAppButton({ code, className = '' }: { code: string; classNa
         {loading ? 'Abriendo…' : 'Contactar por WhatsApp'}
       </Button>
       {error && (
-        <p role="alert" className="mt-2 text-sm font-medium text-[--color-urgente]">{error}</p>
+        <p role="alert" className="mt-2 text-sm font-medium text-(--color-urgente)">{error}</p>
       )}
     </div>
   )
@@ -3569,8 +3574,8 @@ export function ClaimButton({ code }: { code: string }) {
   }
 
   return (
-    <div className="rounded-lg border border-[--color-line] bg-white p-3">
-      <label htmlFor={`nombre-${code}`} className="block text-sm font-semibold text-[--color-secondary]">
+    <div className="rounded-lg border border-(--color-line) bg-white p-3">
+      <label htmlFor={`nombre-${code}`} className="block text-sm font-semibold text-(--color-secondary)">
         Tu nombre
       </label>
       <input
@@ -3578,9 +3583,9 @@ export function ClaimButton({ code }: { code: string }) {
         value={name}
         onChange={(e) => setName(e.target.value)}
         autoComplete="name"
-        className="mt-1 min-h-[44px] w-full rounded-lg border border-[--color-line] px-3 text-base"
+        className="mt-1 min-h-[44px] w-full rounded-lg border border-(--color-line) px-3 text-base"
       />
-      {error && <p role="alert" className="mt-2 text-sm font-medium text-[--color-urgente]">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-sm font-medium text-(--color-urgente)">{error}</p>}
       <div className="mt-3 flex gap-2">
         <Button onClick={submit} disabled={saving || name.trim().length < 2} className="flex-1">
           {saving ? 'Guardando…' : 'Confirmar'}
@@ -3680,19 +3685,19 @@ export function RequestCard({ item }: { item: RequestListItem }) {
   const remaining = item.itemCount - item.itemsPreview.length
 
   return (
-    <article className="rounded-xl border border-[--color-line] bg-white p-4 shadow-sm transition-colors duration-150 hover:border-[--color-cta]">
+    <article className="rounded-xl border border-(--color-line) bg-white p-4 shadow-sm transition-colors duration-150 hover:border-(--color-cta)">
       <div className="flex flex-wrap items-center gap-2">
         <UrgencyBadge urgency={item.urgency} />
         <StatusBadge status={item.status} claimedBy={item.claimedBy} />
       </div>
 
-      <h2 className="mt-3 text-lg font-bold leading-snug text-[--color-primary]">
+      <h2 className="mt-3 text-lg font-bold leading-snug text-(--color-primary)">
         <Link href={`/s/${item.publicCode}`} className="cursor-pointer hover:underline">
           {item.title}
         </Link>
       </h2>
 
-      <p className="mt-1 flex flex-wrap items-center gap-1 text-sm text-[--color-muted]">
+      <p className="mt-1 flex flex-wrap items-center gap-1 text-sm text-(--color-muted)">
         <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" />
         {item.neighborhood ? `${item.neighborhood}, ` : ''}{item.cityName}
         {item.distanceKm !== undefined && (
@@ -3705,12 +3710,12 @@ export function RequestCard({ item }: { item: RequestListItem }) {
 
       <ul className="mt-3 flex flex-wrap gap-2">
         {item.itemsPreview.map((name) => (
-          <li key={name} className="rounded-md bg-slate-100 px-2 py-1 text-sm font-medium text-[--color-secondary]">
+          <li key={name} className="rounded-md bg-slate-100 px-2 py-1 text-sm font-medium text-(--color-secondary)">
             {name}
           </li>
         ))}
         {remaining > 0 && (
-          <li className="rounded-md px-2 py-1 text-sm font-medium text-[--color-muted]">
+          <li className="rounded-md px-2 py-1 text-sm font-medium text-(--color-muted)">
             y {remaining} más
           </li>
         )}
@@ -3770,7 +3775,7 @@ export function RequestFilters() {
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
       <div className="relative flex-1">
-        <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[--color-muted]" />
+        <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-(--color-muted)" />
         <label htmlFor="buscar" className="sr-only">Buscar por necesidad o barrio</label>
         <input
           id="buscar"
@@ -3778,7 +3783,7 @@ export function RequestFilters() {
           defaultValue={params.get('buscar') ?? ''}
           onChange={(e) => update('buscar', e.target.value)}
           placeholder="Buscar por barrio o necesidad"
-          className="min-h-[44px] w-full rounded-lg border border-[--color-line] bg-white pl-10 pr-3 text-base"
+          className="min-h-[44px] w-full rounded-lg border border-(--color-line) bg-white pl-10 pr-3 text-base"
         />
       </div>
 
@@ -3787,7 +3792,7 @@ export function RequestFilters() {
         id="urgencia"
         value={params.get('urgencia') ?? ''}
         onChange={(e) => update('urgencia', e.target.value)}
-        className="min-h-[44px] cursor-pointer rounded-lg border border-[--color-line] bg-white px-3 text-base"
+        className="min-h-[44px] cursor-pointer rounded-lg border border-(--color-line) bg-white px-3 text-base"
       >
         {URGENCIES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -3797,7 +3802,7 @@ export function RequestFilters() {
         id="estado"
         value={params.get('estado') ?? ''}
         onChange={(e) => update('estado', e.target.value)}
-        className="min-h-[44px] cursor-pointer rounded-lg border border-[--color-line] bg-white px-3 text-base"
+        className="min-h-[44px] cursor-pointer rounded-lg border border-(--color-line) bg-white px-3 text-base"
       >
         {STATUSES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -3814,10 +3819,10 @@ import { Inbox } from 'lucide-react'
 
 export function EmptyState({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-[--color-line] bg-white p-8 text-center">
-      <Inbox aria-hidden="true" className="mx-auto h-10 w-10 text-[--color-muted]" />
-      <p className="mt-3 text-base font-medium text-[--color-secondary]">{message}</p>
-      <Link href="/nueva" className="mt-4 inline-block cursor-pointer font-semibold text-[--color-cta] underline">
+    <div className="rounded-xl border border-dashed border-(--color-line) bg-white p-8 text-center">
+      <Inbox aria-hidden="true" className="mx-auto h-10 w-10 text-(--color-muted)" />
+      <p className="mt-3 text-base font-medium text-(--color-secondary)">{message}</p>
+      <Link href="/nueva" className="mt-4 inline-block cursor-pointer font-semibold text-(--color-cta) underline">
         Publicar una solicitud
       </Link>
     </div>
@@ -3856,10 +3861,10 @@ export default async function HomePage({
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[--color-primary]">
+        <h1 className="text-2xl font-bold tracking-tight text-(--color-primary)">
           Solicitudes de ayuda
         </h1>
-        <p className="mt-1 text-[--color-muted]">
+        <p className="mt-1 text-(--color-muted)">
           {items.length === 0
             ? 'No hay solicitudes con estos filtros.'
             : `${items.length} ${items.length === 1 ? 'solicitud' : 'solicitudes'}.`}
@@ -3968,7 +3973,7 @@ export default function RequestMap({
       center={[center.lat, center.lng]}
       zoom={zoom}
       scrollWheelZoom
-      className="h-[60vh] w-full rounded-xl border border-[--color-line]"
+      className="h-[60vh] w-full rounded-xl border border-(--color-line)"
     >
       <TileLayer
         attribution='&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -3983,7 +3988,7 @@ export default function RequestMap({
           <Popup>
             <strong className="block text-base">{item.title}</strong>
             <span className="text-sm">{item.neighborhood ?? item.cityName}</span>
-            <Link href={`/s/${item.publicCode}`} className="mt-2 block font-semibold text-[--color-cta] underline">
+            <Link href={`/s/${item.publicCode}`} className="mt-2 block font-semibold text-(--color-cta) underline">
               Ver solicitud
             </Link>
           </Popup>
@@ -4023,7 +4028,7 @@ export function MapListToggle({ current }: { current: 'lista' | 'mapa' }) {
         type="button"
         onClick={() => go('lista')}
         aria-pressed={current === 'lista'}
-        className={`${base} ${current === 'lista' ? 'bg-white text-[--color-primary] shadow-sm' : 'text-[--color-muted]'}`}
+        className={`${base} ${current === 'lista' ? 'bg-white text-(--color-primary) shadow-sm' : 'text-(--color-muted)'}`}
       >
         <List aria-hidden="true" className="h-5 w-5" /> Lista
       </button>
@@ -4031,7 +4036,7 @@ export function MapListToggle({ current }: { current: 'lista' | 'mapa' }) {
         type="button"
         onClick={() => go('mapa')}
         aria-pressed={current === 'mapa'}
-        className={`${base} ${current === 'mapa' ? 'bg-white text-[--color-primary] shadow-sm' : 'text-[--color-muted]'}`}
+        className={`${base} ${current === 'mapa' ? 'bg-white text-(--color-primary) shadow-sm' : 'text-(--color-muted)'}`}
       >
         <MapIcon aria-hidden="true" className="h-5 w-5" /> Mapa
       </button>
@@ -4333,7 +4338,7 @@ export function ItemsField({
 
   return (
     <fieldset className="space-y-3">
-      <legend className="text-base font-semibold text-[--color-primary]">
+      <legend className="text-base font-semibold text-(--color-primary)">
         ¿Qué necesitan?
       </legend>
 
@@ -4348,7 +4353,7 @@ export function ItemsField({
               value={item.name}
               onChange={(e) => update(index, { name: e.target.value })}
               placeholder="Agua, pañales, cobijas…"
-              className="min-h-[44px] w-full rounded-lg border border-[--color-line] px-3 text-base"
+              className="min-h-[44px] w-full rounded-lg border border-(--color-line) px-3 text-base"
             />
           </div>
           <div className="sm:w-40">
@@ -4360,7 +4365,7 @@ export function ItemsField({
               value={item.quantity}
               onChange={(e) => update(index, { quantity: e.target.value })}
               placeholder="10 litros"
-              className="min-h-[44px] w-full rounded-lg border border-[--color-line] px-3 text-base"
+              className="min-h-[44px] w-full rounded-lg border border-(--color-line) px-3 text-base"
             />
           </div>
           {items.length > 1 && (
@@ -4368,7 +4373,7 @@ export function ItemsField({
               type="button"
               onClick={() => onChange(items.filter((_, i) => i !== index))}
               aria-label={`Quitar ${item.name || `renglón ${index + 1}`}`}
-              className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-[--color-line] text-[--color-muted] transition-colors duration-150 hover:border-[--color-urgente] hover:text-[--color-urgente]"
+              className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-(--color-line) text-(--color-muted) transition-colors duration-150 hover:border-(--color-urgente) hover:text-(--color-urgente)"
             >
               <X aria-hidden="true" className="h-5 w-5" />
             </button>
@@ -4463,16 +4468,16 @@ export default function LocationPicker({
         {locating ? 'Buscando…' : 'Usar mi ubicación'}
       </Button>
 
-      {error && <p role="alert" className="text-sm font-medium text-[--color-urgente]">{error}</p>}
+      {error && <p role="alert" className="text-sm font-medium text-(--color-urgente)">{error}</p>}
 
-      <p className="text-sm text-[--color-muted]">
+      <p className="text-sm text-(--color-muted)">
         Toca el mapa o arrastra el punto para marcar dónde se necesita la ayuda.
       </p>
 
       <MapContainer
         center={[lat, lng]}
         zoom={zoom}
-        className="h-64 w-full rounded-xl border border-[--color-line]"
+        className="h-64 w-full rounded-xl border border-(--color-line)"
       >
         <TileLayer
           attribution='&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -4613,8 +4618,8 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
     return <RequestCreated {...created} whatsapp={whatsapp} title={title} />
   }
 
-  const field = 'min-h-[44px] w-full rounded-lg border border-[--color-line] px-3 text-base'
-  const label = 'block text-base font-semibold text-[--color-primary]'
+  const field = 'min-h-[44px] w-full rounded-lg border border-(--color-line) px-3 text-base'
+  const label = 'block text-base font-semibold text-(--color-primary)'
 
   return (
     // `noValidate` desactiva la validación nativa del navegador a propósito.
@@ -4669,7 +4674,7 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
 
       <div>
         <label htmlFor="descripcion" className={label}>
-          Detalles <span className="font-normal text-[--color-muted]">(opcional)</span>
+          Detalles <span className="font-normal text-(--color-muted)">(opcional)</span>
         </label>
         <textarea
           id="descripcion"
@@ -4677,7 +4682,7 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
           maxLength={1000}
-          className="w-full rounded-lg border border-[--color-line] p-3 text-base"
+          className="w-full rounded-lg border border-(--color-line) p-3 text-base"
         />
       </div>
 
@@ -4693,21 +4698,21 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
 
       <div>
         <label htmlFor="barrio" className={label}>
-          Barrio o comuna <span className="font-normal text-[--color-muted]">(opcional)</span>
+          Barrio o comuna <span className="font-normal text-(--color-muted)">(opcional)</span>
         </label>
         <input id="barrio" value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} className={field} />
       </div>
 
       <div>
         <label htmlFor="direccion" className={label}>
-          Dirección o punto de referencia <span className="font-normal text-[--color-muted]">(opcional)</span>
+          Dirección o punto de referencia <span className="font-normal text-(--color-muted)">(opcional)</span>
         </label>
         <input id="direccion" value={addressText} onChange={(e) => setAddressText(e.target.value)} className={field} />
       </div>
 
       <div>
         <label htmlFor="personas" className={label}>
-          ¿Cuántas personas son? <span className="font-normal text-[--color-muted]">(opcional)</span>
+          ¿Cuántas personas son? <span className="font-normal text-(--color-muted)">(opcional)</span>
         </label>
         <input
           id="personas"
@@ -4738,7 +4743,7 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
           className={field}
           required
         />
-        <p className="mt-1 text-sm text-[--color-muted]">
+        <p className="mt-1 text-sm text-(--color-muted)">
           No se muestra en la lista. Solo lo ve quien pulse el botón de contactarte.
         </p>
       </div>
@@ -4764,18 +4769,18 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
           onChange={(e) => setAcceptsPrivacy(e.target.checked)}
           className="mt-1 h-6 w-6 shrink-0 cursor-pointer"
         />
-        <span className="text-sm text-[--color-secondary]">
+        <span className="text-sm text-(--color-secondary)">
           Autorizo publicar mi nombre, mi ubicación y lo que necesito, y que mi número
           de WhatsApp se entregue a quien quiera ayudarme. Puedo pedir que se borre
           cuando quiera. Leer la{' '}
-          <Link href="/privacidad" className="cursor-pointer font-semibold text-[--color-cta] underline">
+          <Link href="/privacidad" className="cursor-pointer font-semibold text-(--color-cta) underline">
             política de datos
           </Link>.
         </span>
       </label>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-[--color-urgente-soft] p-3 text-base font-semibold text-[--color-urgente]">
+        <p role="alert" className="rounded-lg bg-(--color-urgente-soft) p-3 text-base font-semibold text-(--color-urgente)">
           {error}
         </p>
       )}
@@ -4830,15 +4835,15 @@ export function RequestCreated({
   }
 
   return (
-    <div className="space-y-5 rounded-xl border border-[--color-line] bg-white p-5">
+    <div className="space-y-5 rounded-xl border border-(--color-line) bg-white p-5">
       <div className="flex items-center gap-3">
-        <CheckCircle2 aria-hidden="true" className="h-8 w-8 shrink-0 text-[--color-baja]" />
-        <h1 className="text-xl font-bold text-[--color-primary]">Tu solicitud ya está publicada</h1>
+        <CheckCircle2 aria-hidden="true" className="h-8 w-8 shrink-0 text-(--color-baja)" />
+        <h1 className="text-xl font-bold text-(--color-primary)">Tu solicitud ya está publicada</h1>
       </div>
 
-      <div className="rounded-lg bg-[--color-media-soft] p-4">
-        <p className="font-semibold text-[--color-media]">Guarda este enlace</p>
-        <p className="mt-1 text-sm text-[--color-secondary]">
+      <div className="rounded-lg bg-(--color-media-soft) p-4">
+        <p className="font-semibold text-(--color-media)">Guarda este enlace</p>
+        <p className="mt-1 text-sm text-(--color-secondary)">
           Es la única forma de marcar tu solicitud como atendida o de borrarla.
           Si borras los datos del navegador, lo pierdes.
         </p>
@@ -4860,7 +4865,7 @@ export function RequestCreated({
         </div>
       </div>
 
-      <Link href={`/s/${publicCode}`} className="block cursor-pointer text-center font-semibold text-[--color-cta] underline">
+      <Link href={`/s/${publicCode}`} className="block cursor-pointer text-center font-semibold text-(--color-cta) underline">
         Ver mi solicitud publicada
       </Link>
     </div>
@@ -4886,8 +4891,8 @@ export default async function NewRequestPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[--color-primary]">Pedir ayuda</h1>
-        <p className="mt-1 text-[--color-muted]">
+        <h1 className="text-2xl font-bold tracking-tight text-(--color-primary)">Pedir ayuda</h1>
+        <p className="mt-1 text-(--color-muted)">
           Cuenta qué necesitas y dónde. Quien pueda ayudarte te escribirá por WhatsApp.
         </p>
       </div>
@@ -5056,9 +5061,9 @@ type FeedEvent = {
 const POLL_MS = 30_000
 
 const DESCRIPTIONS = {
-  request_created: { text: 'Nueva solicitud', Icon: AlertCircle, className: 'text-[--color-urgente]' },
-  request_claimed: { text: 'Alguien va en camino', Icon: Truck, className: 'text-[--color-cta]' },
-  request_fulfilled: { text: 'Solicitud atendida', Icon: PackageCheck, className: 'text-[--color-baja]' },
+  request_created: { text: 'Nueva solicitud', Icon: AlertCircle, className: 'text-(--color-urgente)' },
+  request_claimed: { text: 'Alguien va en camino', Icon: Truck, className: 'text-(--color-cta)' },
+  request_fulfilled: { text: 'Solicitud atendida', Icon: PackageCheck, className: 'text-(--color-baja)' },
 }
 
 export function NotificationBell() {
@@ -5107,11 +5112,11 @@ export function NotificationBell() {
         onClick={toggle}
         aria-label={unseen > 0 ? `Novedades: ${unseen} sin leer` : 'Novedades'}
         aria-expanded={open}
-        className="relative flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-[--color-line] bg-white transition-colors duration-150 hover:border-[--color-cta]"
+        className="relative flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-(--color-line) bg-white transition-colors duration-150 hover:border-(--color-cta)"
       >
-        <Bell aria-hidden="true" className="h-5 w-5 text-[--color-secondary]" />
+        <Bell aria-hidden="true" className="h-5 w-5 text-(--color-secondary)" />
         {unseen > 0 && (
-          <span className="absolute -right-1 -top-1 min-w-[22px] rounded-full bg-[--color-urgente] px-1.5 text-sm font-bold leading-[22px] text-white">
+          <span className="absolute -right-1 -top-1 min-w-[22px] rounded-full bg-(--color-urgente) px-1.5 text-sm font-bold leading-[22px] text-white">
             {unseen > 9 ? '9+' : unseen}
           </span>
         )}
@@ -5126,31 +5131,31 @@ export function NotificationBell() {
             className="h-full w-full max-w-sm overflow-y-auto bg-white p-4 shadow-xl"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[--color-primary]">Novedades</h2>
+              <h2 className="text-lg font-bold text-(--color-primary)">Novedades</h2>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Cerrar novedades"
-                className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg text-[--color-muted] transition-colors duration-150 hover:text-[--color-ink]"
+                className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg text-(--color-muted) transition-colors duration-150 hover:text-(--color-ink)"
               >
                 <X aria-hidden="true" className="h-5 w-5" />
               </button>
             </div>
 
             {events.length === 0 ? (
-              <p className="mt-6 text-[--color-muted]">Todavía no hay movimientos.</p>
+              <p className="mt-6 text-(--color-muted)">Todavía no hay movimientos.</p>
             ) : (
               <ul className="mt-4 space-y-3">
                 {events.map((event) => {
                   const info = DESCRIPTIONS[event.type]
                   return (
-                    <li key={event.id} className="border-b border-[--color-line] pb-3 last:border-0">
+                    <li key={event.id} className="border-b border-(--color-line) pb-3 last:border-0">
                       <p className={`flex items-center gap-2 text-sm font-semibold ${info.className}`}>
                         <info.Icon aria-hidden="true" className="h-4 w-4" />
                         {info.text}
                       </p>
-                      <p className="mt-1 font-medium text-[--color-ink]">{event.title}</p>
-                      <p className="text-sm text-[--color-muted]">
+                      <p className="mt-1 font-medium text-(--color-ink)">{event.title}</p>
+                      <p className="text-sm text-(--color-muted)">
                         {event.neighborhood ? `${event.neighborhood}, ` : ''}{event.city}
                       </p>
                     </li>
@@ -5162,7 +5167,7 @@ export function NotificationBell() {
             <Link
               href="/"
               onClick={() => setOpen(false)}
-              className="mt-6 block cursor-pointer text-center font-semibold text-[--color-cta] underline"
+              className="mt-6 block cursor-pointer text-center font-semibold text-(--color-cta) underline"
             >
               Ver todas las solicitudes
             </Link>
@@ -5292,8 +5297,8 @@ export function OwnerActions({
   }
 
   return (
-    <div className="rounded-xl border-2 border-[--color-cta] bg-sky-50 p-4">
-      <h2 className="text-base font-bold text-[--color-primary]">Administrar mi solicitud</h2>
+    <div className="rounded-xl border-2 border-(--color-cta) bg-sky-50 p-4">
+      <h2 className="text-base font-bold text-(--color-primary)">Administrar mi solicitud</h2>
 
       {confirming === null && (
         <div className="mt-3 flex flex-col gap-2 sm:flex-row">
@@ -5310,7 +5315,7 @@ export function OwnerActions({
 
       {confirming && (
         <div className="mt-3">
-          <p className="font-medium text-[--color-secondary]">
+          <p className="font-medium text-(--color-secondary)">
             {confirming === 'fulfill'
               ? '¿Confirmas que ya recibiste lo que necesitabas? La solicitud saldrá del mapa.'
               : '¿Confirmas que quieres cancelar? Ya nadie podrá verla.'}
@@ -5330,7 +5335,7 @@ export function OwnerActions({
         </div>
       )}
 
-      {error && <p role="alert" className="mt-3 text-sm font-semibold text-[--color-urgente]">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-sm font-semibold text-(--color-urgente)">{error}</p>}
     </div>
   )
 }
@@ -5384,7 +5389,7 @@ export function CancelClaimButton({ code }: { code: string }) {
       <Button variant="secondary" onClick={cancel} disabled={busy} className="w-full">
         {busy ? 'Cancelando…' : 'Ya no puedo ir'}
       </Button>
-      {error && <p role="alert" className="mt-2 text-sm font-semibold text-[--color-urgente]">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-sm font-semibold text-(--color-urgente)">{error}</p>}
     </div>
   )
 }
@@ -5421,11 +5426,11 @@ export function RequestDetail({ detail, token }: { detail: Detail; token: string
         <StatusBadge status={detail.status} claimedBy={detail.claimedBy} />
       </div>
 
-      <h1 className="text-2xl font-bold leading-tight text-[--color-primary]">{detail.title}</h1>
+      <h1 className="text-2xl font-bold leading-tight text-(--color-primary)">{detail.title}</h1>
 
-      {detail.description && <p className="text-[--color-secondary]">{detail.description}</p>}
+      {detail.description && <p className="text-(--color-secondary)">{detail.description}</p>}
 
-      <dl className="grid gap-2 text-[--color-muted] sm:grid-cols-2">
+      <dl className="grid gap-2 text-(--color-muted) sm:grid-cols-2">
         <div className="flex items-center gap-2">
           <MapPin aria-hidden="true" className="h-5 w-5 shrink-0" />
           <dt className="sr-only">Ubicación</dt>
@@ -5454,12 +5459,12 @@ export function RequestDetail({ detail, token }: { detail: Detail; token: string
       </dl>
 
       <section>
-        <h2 className="text-lg font-bold text-[--color-primary]">Lo que necesitan</h2>
-        <ul className="mt-2 divide-y divide-[--color-line] rounded-xl border border-[--color-line] bg-white">
+        <h2 className="text-lg font-bold text-(--color-primary)">Lo que necesitan</h2>
+        <ul className="mt-2 divide-y divide-(--color-line) rounded-xl border border-(--color-line) bg-white">
           {detail.items.map((item, i) => (
             <li key={i} className="flex items-center justify-between gap-3 px-4 py-3">
-              <span className="font-medium text-[--color-ink]">{item.name}</span>
-              {item.quantity && <span className="text-[--color-muted]">{item.quantity}</span>}
+              <span className="font-medium text-(--color-ink)">{item.name}</span>
+              {item.quantity && <span className="text-(--color-muted)">{item.quantity}</span>}
             </li>
           ))}
         </ul>
@@ -5569,16 +5574,16 @@ export function MyRequestsList() {
   useEffect(() => setItems(listMyRequests()), [])
 
   if (items === null) {
-    return <p className="text-[--color-muted]">Cargando…</p>
+    return <p className="text-(--color-muted)">Cargando…</p>
   }
 
   if (items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[--color-line] bg-white p-6 text-center">
-        <p className="text-[--color-secondary]">
+      <div className="rounded-xl border border-dashed border-(--color-line) bg-white p-6 text-center">
+        <p className="text-(--color-secondary)">
           En este navegador no hay solicitudes guardadas.
         </p>
-        <p className="mt-2 text-sm text-[--color-muted]">
+        <p className="mt-2 text-sm text-(--color-muted)">
           Si publicaste una desde otro teléfono, ábrela con el enlace que guardaste.
         </p>
       </div>
@@ -5588,14 +5593,14 @@ export function MyRequestsList() {
   return (
     <ul className="space-y-3">
       {items.map((item) => (
-        <li key={item.publicCode} className="rounded-xl border border-[--color-line] bg-white p-4">
-          <p className="font-semibold text-[--color-primary]">{item.title}</p>
-          <p className="mt-1 text-sm text-[--color-muted]">
+        <li key={item.publicCode} className="rounded-xl border border-(--color-line) bg-white p-4">
+          <p className="font-semibold text-(--color-primary)">{item.title}</p>
+          <p className="mt-1 text-sm text-(--color-muted)">
             Publicada el {new Date(item.createdAt).toLocaleDateString('es-CO', { day: 'numeric', month: 'long' })}
           </p>
           <Link
             href={`/s/${item.publicCode}?t=${item.manageToken}`}
-            className="mt-3 inline-flex cursor-pointer items-center gap-2 font-semibold text-[--color-cta] underline"
+            className="mt-3 inline-flex cursor-pointer items-center gap-2 font-semibold text-(--color-cta) underline"
           >
             <ExternalLink aria-hidden="true" className="h-4 w-4" />
             Administrar
@@ -5617,8 +5622,8 @@ export const metadata = { title: 'Mis solicitudes — Reporta Cali' }
 export default function MyRequestsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <h1 className="text-2xl font-bold tracking-tight text-[--color-primary]">Mis solicitudes</h1>
-      <p className="text-[--color-muted]">
+      <h1 className="text-2xl font-bold tracking-tight text-(--color-primary)">Mis solicitudes</h1>
+      <p className="text-(--color-muted)">
         Estas son las solicitudes guardadas en este navegador. Si borras los datos de
         navegación, desaparecen de aquí, pero siguen publicadas: para administrarlas
         necesitas el enlace que guardaste.
@@ -5639,19 +5644,19 @@ export const metadata = { title: 'Política de datos — Reporta Cali' }
 export default function PrivacyPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6 pb-10">
-      <h1 className="text-2xl font-bold tracking-tight text-[--color-primary]">
+      <h1 className="text-2xl font-bold tracking-tight text-(--color-primary)">
         Qué hacemos con tus datos
       </h1>
 
-      <p className="text-[--color-secondary]">
+      <p className="text-(--color-secondary)">
         Reporta Cali existe para que la ayuda llegue a quien la necesita después del
         terremoto. Para eso necesitamos unos pocos datos tuyos. Esto es exactamente
         qué guardamos, qué mostramos y por cuánto tiempo.
       </p>
 
       <section className="space-y-2">
-        <h2 className="text-lg font-bold text-[--color-primary]">Qué guardamos</h2>
-        <p className="text-[--color-secondary]">
+        <h2 className="text-lg font-bold text-(--color-primary)">Qué guardamos</h2>
+        <p className="text-(--color-secondary)">
           Tu nombre, tu número de WhatsApp, la ubicación que marcaste, el barrio, la
           descripción y la lista de cosas que necesitas. También guardamos una versión
           cifrada de tu dirección IP, que usamos únicamente para frenar mensajes
@@ -5660,8 +5665,8 @@ export default function PrivacyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-lg font-bold text-[--color-primary]">Qué se ve en público</h2>
-        <p className="text-[--color-secondary]">
+        <h2 className="text-lg font-bold text-(--color-primary)">Qué se ve en público</h2>
+        <p className="text-(--color-secondary)">
           Todo lo anterior, <strong>menos tu número de WhatsApp</strong>. El número no
           aparece en la lista, ni en el mapa, ni en el código de la página. Solo se
           entrega a quien pulsa el botón para contactarte, y limitamos cuántas veces
@@ -5671,8 +5676,8 @@ export default function PrivacyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-lg font-bold text-[--color-primary]">Por cuánto tiempo</h2>
-        <p className="text-[--color-secondary]">
+        <h2 className="text-lg font-bold text-(--color-primary)">Por cuánto tiempo</h2>
+        <p className="text-(--color-secondary)">
           Conservamos tus datos <strong>mientras dure la emergencia</strong>. Dos meses
           después de que tu solicitud quede atendida o cancelada, borramos
           automáticamente tu nombre, tu número y tu dirección, y dejamos solo el barrio,
@@ -5682,8 +5687,8 @@ export default function PrivacyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-lg font-bold text-[--color-primary]">Qué nunca hacemos</h2>
-        <ul className="list-disc space-y-1 pl-5 text-[--color-secondary]">
+        <h2 className="text-lg font-bold text-(--color-primary)">Qué nunca hacemos</h2>
+        <ul className="list-disc space-y-1 pl-5 text-(--color-secondary)">
           <li>No vendemos ni compartimos tus datos con nadie.</li>
           <li>No los usamos para publicidad.</li>
           <li>No hay rastreadores, ni analítica, ni cookies de terceros.</li>
@@ -5692,15 +5697,15 @@ export default function PrivacyPage() {
       </section>
 
       <section className="space-y-2">
-        <h2 className="text-lg font-bold text-[--color-primary]">Cómo borrar tu solicitud</h2>
-        <p className="text-[--color-secondary]">
+        <h2 className="text-lg font-bold text-(--color-primary)">Cómo borrar tu solicitud</h2>
+        <p className="text-(--color-secondary)">
           Cuando publicas, te damos un enlace privado. Ábrelo y usa el botón
           &ldquo;Cancelar solicitud&rdquo;: desaparece de inmediato. No tienes que
           esperar ningún plazo ni pedir permiso a nadie.
         </p>
       </section>
 
-      <p className="rounded-lg bg-slate-50 p-4 text-sm text-[--color-muted]">
+      <p className="rounded-lg bg-slate-50 p-4 text-sm text-(--color-muted)">
         Este tratamiento se hace conforme a la Ley 1581 de 2012 de protección de datos
         personales. Al publicar una solicitud autorizas expresamente el uso descrito
         aquí, y puedes revocar esa autorización borrando tu solicitud.
@@ -5717,7 +5722,7 @@ En `src/components/SiteHeader.tsx`, añadir dentro del contenedor, antes de `Cit
 ```tsx
 <Link
   href="/mis-solicitudes"
-  className="hidden cursor-pointer text-sm font-semibold text-[--color-secondary] underline transition-colors duration-150 hover:text-[--color-cta] sm:block"
+  className="hidden cursor-pointer text-sm font-semibold text-(--color-secondary) underline transition-colors duration-150 hover:text-(--color-cta) sm:block"
 >
   Mis solicitudes
 </Link>
@@ -5726,7 +5731,7 @@ En `src/components/SiteHeader.tsx`, añadir dentro del contenedor, antes de `Cit
 Y añadir un pie en `src/app/layout.tsx`, después de `<main>`:
 
 ```tsx
-<footer className="mx-auto max-w-6xl px-4 pb-24 pt-8 text-sm text-[--color-muted]">
+<footer className="mx-auto max-w-6xl px-4 pb-24 pt-8 text-sm text-(--color-muted)">
   <nav className="flex flex-wrap gap-4">
     <Link href="/mis-solicitudes" className="cursor-pointer underline">Mis solicitudes</Link>
     <Link href="/privacidad" className="cursor-pointer underline">Política de datos</Link>
@@ -5969,27 +5974,27 @@ export default async function AdminLoginPage({
 
   return (
     <form action={loginAction} className="mx-auto max-w-sm space-y-4">
-      <h1 className="text-xl font-bold text-[--color-primary]">Acceso de moderación</h1>
+      <h1 className="text-xl font-bold text-(--color-primary)">Acceso de moderación</h1>
 
       <div>
-        <label htmlFor="token" className="block font-semibold text-[--color-primary]">Clave</label>
+        <label htmlFor="token" className="block font-semibold text-(--color-primary)">Clave</label>
         <input
           id="token"
           name="token"
           type="password"
           autoComplete="current-password"
           required
-          className="min-h-[44px] w-full rounded-lg border border-[--color-line] px-3 text-base"
+          className="min-h-[44px] w-full rounded-lg border border-(--color-line) px-3 text-base"
         />
       </div>
 
       {hasError && (
-        <p role="alert" className="text-sm font-semibold text-[--color-urgente]">Clave incorrecta.</p>
+        <p role="alert" className="text-sm font-semibold text-(--color-urgente)">Clave incorrecta.</p>
       )}
 
       <button
         type="submit"
-        className="min-h-[44px] w-full cursor-pointer rounded-lg bg-[--color-cta] px-4 font-semibold text-white transition-colors duration-150 hover:bg-[--color-cta-hover]"
+        className="min-h-[44px] w-full cursor-pointer rounded-lg bg-(--color-cta) px-4 font-semibold text-white transition-colors duration-150 hover:bg-(--color-cta-hover)"
       >
         Entrar
       </button>
@@ -6018,8 +6023,8 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold text-[--color-primary]">Moderación</h1>
-      <p className="text-[--color-muted]">
+      <h1 className="text-2xl font-bold text-(--color-primary)">Moderación</h1>
+      <p className="text-(--color-muted)">
         Primero lo marcado para revisión: reportes de la comunidad y envíos que
         superaron el límite por conexión.
       </p>
@@ -6027,7 +6032,7 @@ export default async function AdminPage() {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-left">
           <thead>
-            <tr className="border-b border-[--color-line] text-sm text-[--color-muted]">
+            <tr className="border-b border-(--color-line) text-sm text-(--color-muted)">
               <th className="py-2 pr-3">Solicitud</th>
               <th className="py-2 pr-3">Ciudad</th>
               <th className="py-2 pr-3">Reportes</th>
@@ -6037,7 +6042,7 @@ export default async function AdminPage() {
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.publicCode} className={`border-b border-[--color-line] ${row.needsReview ? 'bg-[--color-media-soft]' : ''}`}>
+              <tr key={row.publicCode} className={`border-b border-(--color-line) ${row.needsReview ? 'bg-(--color-media-soft)' : ''}`}>
                 <td className="py-3 pr-3">
                   <Link href={`/s/${row.publicCode}`} className="cursor-pointer font-medium underline">
                     {row.title}
@@ -6050,7 +6055,7 @@ export default async function AdminPage() {
                   <form action={hideAction.bind(null, row.publicCode, !row.isHidden)}>
                     <button
                       type="submit"
-                      className="min-h-[44px] cursor-pointer rounded-lg border-2 border-[--color-primary] px-3 font-semibold transition-colors duration-150 hover:bg-slate-50"
+                      className="min-h-[44px] cursor-pointer rounded-lg border-2 border-(--color-primary) px-3 font-semibold transition-colors duration-150 hover:bg-slate-50"
                     >
                       {row.isHidden ? 'Mostrar' : 'Ocultar'}
                     </button>
@@ -6083,7 +6088,7 @@ export function ReportButton({ code }: { code: string }) {
   const [open, setOpen] = useState(false)
 
   if (done) {
-    return <p className="text-sm text-[--color-muted]">Gracias. Lo revisaremos.</p>
+    return <p className="text-sm text-(--color-muted)">Gracias. Lo revisaremos.</p>
   }
 
   if (!open) {
@@ -6091,7 +6096,7 @@ export function ReportButton({ code }: { code: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-[44px] cursor-pointer items-center gap-1.5 text-sm text-[--color-muted] underline transition-colors duration-150 hover:text-[--color-urgente]"
+        className="inline-flex min-h-[44px] cursor-pointer items-center gap-1.5 text-sm text-(--color-muted) underline transition-colors duration-150 hover:text-(--color-urgente)"
       >
         <Flag aria-hidden="true" className="h-4 w-4" />
         Reportar
@@ -6108,7 +6113,7 @@ export function ReportButton({ code }: { code: string }) {
         id={`motivo-${code}`}
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        className="min-h-[44px] w-full rounded-lg border border-[--color-line] px-3 text-base"
+        className="min-h-[44px] w-full rounded-lg border border-(--color-line) px-3 text-base"
       />
       <button
         type="button"
@@ -6116,7 +6121,7 @@ export function ReportButton({ code }: { code: string }) {
           await reportAction(code, reason)
           setDone(true)
         }}
-        className="min-h-[44px] cursor-pointer rounded-lg border-2 border-[--color-urgente] px-3 font-semibold text-[--color-urgente]"
+        className="min-h-[44px] cursor-pointer rounded-lg border-2 border-(--color-urgente) px-3 font-semibold text-(--color-urgente)"
       >
         Enviar reporte
       </button>
@@ -6837,8 +6842,8 @@ export function EditRequestForm({
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  const field = 'min-h-[44px] w-full rounded-lg border border-[--color-line] px-3 text-base'
-  const label = 'block text-base font-semibold text-[--color-primary]'
+  const field = 'min-h-[44px] w-full rounded-lg border border-(--color-line) px-3 text-base'
+  const label = 'block text-base font-semibold text-(--color-primary)'
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -6864,8 +6869,8 @@ export function EditRequestForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4 rounded-xl border border-[--color-line] bg-white p-4">
-      <h3 className="text-lg font-bold text-[--color-primary]">Editar solicitud</h3>
+    <form onSubmit={submit} className="space-y-4 rounded-xl border border-(--color-line) bg-white p-4">
+      <h3 className="text-lg font-bold text-(--color-primary)">Editar solicitud</h3>
 
       <div>
         <label htmlFor="edit-titulo" className={label}>¿Qué está pasando?</label>
@@ -6895,7 +6900,7 @@ export function EditRequestForm({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="w-full rounded-lg border border-[--color-line] p-3 text-base"
+          className="w-full rounded-lg border border-(--color-line) p-3 text-base"
         />
       </div>
 
@@ -6909,7 +6914,7 @@ export function EditRequestForm({
         <input id="edit-direccion" value={addressText} onChange={(e) => setAddressText(e.target.value)} className={field} />
       </div>
 
-      {error && <p role="alert" className="text-sm font-semibold text-[--color-urgente]">{error}</p>}
+      {error && <p role="alert" className="text-sm font-semibold text-(--color-urgente)">{error}</p>}
 
       <div className="flex gap-2">
         <Button type="submit" disabled={saving} className="flex-1">
