@@ -36,6 +36,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           {children}
         </main>
 
+        <footer className="mx-auto max-w-6xl px-4 pb-24 pt-8 text-sm text-[--color-muted]">
+          <nav className="flex flex-wrap gap-4">
+            <Link href="/mis-solicitudes" className="cursor-pointer underline">Mis solicitudes</Link>
+            <Link href="/privacidad" className="cursor-pointer underline">Política de datos</Link>
+          </nav>
+          <p className="mt-3">
+            Reporta Cali es una iniciativa ciudadana sin ánimo de lucro para coordinar la
+            ayuda tras el terremoto.
+          </p>
+        </footer>
+
         {/* Acción principal siempre alcanzable con el pulgar. */}
         <Link
           href="/nueva"

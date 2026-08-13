@@ -12,6 +12,12 @@ export function SiteHeader({ cities }: { cities: City[] }) {
         <Link href="/" className="mr-auto text-lg font-bold tracking-tight text-[--color-primary]">
           Reporta Cali
         </Link>
+        <Link
+          href="/mis-solicitudes"
+          className="hidden cursor-pointer text-sm font-semibold text-[--color-secondary] underline transition-colors duration-150 hover:text-[--color-cta] sm:block"
+        >
+          Mis solicitudes
+        </Link>
         <Suspense fallback={null}>
           <CitySelect cities={cities} />
         </Suspense>
