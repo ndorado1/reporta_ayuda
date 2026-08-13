@@ -301,6 +301,7 @@ async function requireOwner(code: string, manageToken: string) {
       id: requests.id,
       cityId: requests.cityId,
       title: requests.title,
+      status: requests.status,
       neighborhood: requests.neighborhood,
       manageTokenHash: requests.manageTokenHash,
       cityName: cities.name,
@@ -313,6 +314,59 @@ async function requireOwner(code: string, manageToken: string) {
   if (!row) throw new Error('Esta solicitud no existe')
   if (!verifyToken(manageToken, row.manageTokenHash)) throw new Error('No autorizado')
   return row
+}
+
+export const updateRequestSchema = createRequestSchema.pick({
+  title: true,
+  description: true,
+  urgency: true,
+  items: true,
+  neighborhood: true,
+  addressText: true,
+})
+
+export type UpdateRequestInput = z.input<typeof updateRequestSchema>
+
+/**
+ * No toca el WhatsApp ni la ciudad: cambiar el número por esta vía
+ * permitiría secuestrar el contacto de una solicitud ajena si alguien
+ * llegara a filtrar un enlace de gestión.
+ */
+export async function updateRequest(
+  code: string,
+  manageToken: string,
+  raw: UpdateRequestInput
+): Promise<void> {
+  const patch = updateRequestSchema.parse(raw)
+  const owner = await requireOwner(code, manageToken)
+
+  // Una solicitud cerrada no se edita. Además de no tener sentido para el
+  // usuario, editarla movería `updatedAt` y alteraría el reloj de
+  // anonimización que la política de datos promete cumplir.
+  if (owner.status !== 'abierta' && owner.status !== 'en_atencion') {
+    throw new Error('Esta solicitud ya está cerrada y no se puede editar')
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.update(requests).set({
+      title: patch.title,
+      description: patch.description || null,
+      urgency: patch.urgency,
+      neighborhood: patch.neighborhood || null,
+      addressText: patch.addressText || null,
+      updatedAt: new Date(),
+    }).where(eq(requests.id, owner.id))
+
+    await tx.delete(requestItems).where(eq(requestItems.requestId, owner.id))
+    await tx.insert(requestItems).values(
+      patch.items.map((item, index) => ({
+        requestId: owner.id,
+        name: item.name,
+        quantity: item.quantity || null,
+        position: index,
+      }))
+    )
+  })
 }
 
 export async function fulfillRequest(code: string, manageToken: string): Promise<void> {

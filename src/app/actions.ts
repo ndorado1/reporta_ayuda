@@ -3,7 +3,15 @@
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { claimRequest, cancelClaim } from '@/lib/claims'
-import { createRequest, fulfillRequest, cancelRequest, reportRequest, type CreateRequestInput } from '@/lib/requests'
+import {
+  createRequest,
+  fulfillRequest,
+  cancelRequest,
+  reportRequest,
+  updateRequest,
+  type CreateRequestInput,
+  type UpdateRequestInput,
+} from '@/lib/requests'
 import { getClientIp } from '@/lib/request-ip'
 
 type Result<T = unknown> = ({ ok: true } & T) | { ok: false; error: string }
@@ -57,6 +65,25 @@ export async function cancelRequestAction(publicCode: string, manageToken: strin
     revalidatePath(`/s/${publicCode}`)
     return { ok: true }
   } catch (e) {
+    return fail(e)
+  }
+}
+
+export async function updateRequestAction(
+  code: string,
+  token: string,
+  patch: UpdateRequestInput
+): Promise<Result> {
+  try {
+    await updateRequest(code, token, patch)
+    revalidatePath('/')
+    revalidatePath(`/s/${code}`)
+    return { ok: true }
+  } catch (e) {
+    if (e && typeof e === 'object' && 'issues' in e) {
+      const issues = (e as { issues: { message: string }[] }).issues
+      return { ok: false, error: issues[0]?.message ?? 'Revisa los datos' }
+    }
     return fail(e)
   }
 }

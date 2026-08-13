@@ -7,28 +7,52 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
 const fulfill = vi.fn(async () => ({ ok: true as const }))
 const cancel = vi.fn(async () => ({ ok: true as const }))
 
+const detail = {
+  publicCode: 'ABC123', title: 'Agua', description: null, urgency: 'alta' as const,
+  status: 'abierta' as const, neighborhood: null, addressText: null,
+  requesterName: 'Ana', peopleCount: null, lat: 3.44, lng: -76.52,
+  cityName: 'Cali', citySlug: 'cali', items: [{ name: 'Agua', quantity: null }],
+  itemCount: 1, claimedBy: null, createdAt: new Date(), fulfilledAt: null, canManage: true,
+}
+
 describe('OwnerActions', () => {
   it('ofrece marcar como atendida cuando sigue abierta', () => {
-    render(<OwnerActions code="ABC123" token="t" status="abierta" onFulfill={fulfill} onCancel={cancel} />)
+    render(<OwnerActions code="ABC123" token="t" status="abierta" detail={detail} onFulfill={fulfill} onCancel={cancel} />)
     expect(screen.getByRole('button', { name: /ya recibí la ayuda/i })).toBeInTheDocument()
   })
 
   it('pide confirmación antes de marcar como atendida', async () => {
-    render(<OwnerActions code="ABC123" token="t" status="abierta" onFulfill={fulfill} onCancel={cancel} />)
+    render(<OwnerActions code="ABC123" token="t" status="abierta" detail={detail} onFulfill={fulfill} onCancel={cancel} />)
     fireEvent.click(screen.getByRole('button', { name: /ya recibí la ayuda/i }))
     expect(screen.getByText(/¿confirmas/i)).toBeInTheDocument()
     expect(fulfill).not.toHaveBeenCalled()
   })
 
   it('marca como atendida al confirmar', async () => {
-    render(<OwnerActions code="ABC123" token="t" status="abierta" onFulfill={fulfill} onCancel={cancel} />)
+    render(<OwnerActions code="ABC123" token="t" status="abierta" detail={detail} onFulfill={fulfill} onCancel={cancel} />)
     fireEvent.click(screen.getByRole('button', { name: /ya recibí la ayuda/i }))
     fireEvent.click(screen.getByRole('button', { name: /^sí, confirmar$/i }))
     await waitFor(() => expect(fulfill).toHaveBeenCalledWith('ABC123', 't'))
   })
 
   it('no ofrece acciones cuando ya está atendida', () => {
-    render(<OwnerActions code="ABC123" token="t" status="atendida" onFulfill={fulfill} onCancel={cancel} />)
+    render(<OwnerActions code="ABC123" token="t" status="atendida" detail={detail} onFulfill={fulfill} onCancel={cancel} />)
     expect(screen.queryByRole('button', { name: /ya recibí la ayuda/i })).not.toBeInTheDocument()
+  })
+
+  it('ofrece editar mientras la solicitud está abierta', () => {
+    render(<OwnerActions code="ABC123" token="t" status="abierta" detail={detail} onFulfill={fulfill} onCancel={cancel} />)
+    expect(screen.getByRole('button', { name: /editar/i })).toBeInTheDocument()
+  })
+
+  it('muestra el formulario de edición al pulsar editar', () => {
+    render(<OwnerActions code="ABC123" token="t" status="abierta" detail={detail} onFulfill={fulfill} onCancel={cancel} />)
+    fireEvent.click(screen.getByRole('button', { name: /editar/i }))
+    expect(screen.getByRole('heading', { name: /editar solicitud/i })).toBeInTheDocument()
+  })
+
+  it('no ofrece editar cuando ya está atendida', () => {
+    render(<OwnerActions code="ABC123" token="t" status="atendida" detail={detail} onFulfill={fulfill} onCancel={cancel} />)
+    expect(screen.queryByRole('button', { name: /^editar$/i })).not.toBeInTheDocument()
   })
 })

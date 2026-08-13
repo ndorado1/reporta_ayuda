@@ -94,6 +94,7 @@ export function RequestDetail({ detail, token }: { detail: Detail; token: string
           code={detail.publicCode}
           token={token}
           status={detail.status}
+          detail={detail}
           onFulfill={fulfillAction}
           onCancel={cancelRequestAction}
         />
