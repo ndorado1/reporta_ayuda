@@ -33,7 +33,8 @@ Publicar en horas una aplicación web responsive donde:
   menos de dos minutos.
 - Un voluntario encuentra las solicitudes cercanas y abre WhatsApp en dos clics.
 - Una solicitud reclamada y abandonada vuelve sola a estar visible.
-- El número de WhatsApp de un solicitante no puede recolectarse masivamente.
+- Recolectar masivamente los números de WhatsApp exige esfuerzo deliberado: no
+  basta con leer el HTML ni consultar la API del listado.
 
 ## Fuera de alcance
 
@@ -42,7 +43,8 @@ correo, fotos adjuntas, aplicación móvil nativa.
 
 ## Arquitectura
 
-Aplicación Next.js 15 (App Router) full-stack: interfaz, Server Actions y rutas
+Aplicación Next.js (App Router, versión estable vigente al iniciar el proyecto)
+full-stack: interfaz, Server Actions y rutas
 de API en un mismo repositorio. Persistencia en el Postgres existente mediante
 Drizzle ORM. Mapa con Leaflet + OpenStreetMap, sin llave de API ni cuotas.
 Despliegue en el VPS de Contabo con Docker Compose y nginx.
@@ -64,8 +66,9 @@ después de un sismo.
 | `lib/tokens` | Generar y verificar códigos de gestión | — |
 | UI | Pantallas y componentes | los anteriores |
 
-Cada módulo se prueba de forma aislada; la interfaz nunca consulta la base de
-datos directamente.
+Cada módulo se prueba de forma aislada. Los componentes de servidor y las Server
+Actions acceden a los datos únicamente a través de `lib/`; ninguna pantalla
+escribe SQL ni consultas Drizzle por su cuenta.
 
 ## Modelo de datos
 
@@ -98,12 +101,17 @@ un `INSERT`, sin cambiar código ni volver a desplegar.
 | `address_text` | text | dirección o punto de referencia |
 | `neighborhood` | text | barrio o comuna, opcional |
 | `people_count` | int | personas afectadas, opcional |
-| `ip_hash` | text | para límite de tasa y moderación |
+| `ip_hash` | text | HMAC-SHA256 de la IP con secreto de entorno; para límite de tasa y moderación |
 | `is_hidden` | bool | oculta por moderación |
 | `created_at`, `updated_at`, `fulfilled_at` | timestamp | |
 
-Índices: `public_code`, `(city_id, status, created_at)` para el listado
-filtrado, y uno sobre `(lat, lng)` para las consultas por cercanía.
+Índices: `public_code` y `(city_id, status, created_at)` para el listado
+filtrado.
+
+No se usa índice geoespacial. Tras filtrar por ciudad y estado, el conjunto es
+de decenas o cientos de filas, y ordenar por distancia se resuelve calculándola
+en la consulta. Un índice btree sobre `(lat, lng)` no aceleraría ese orden, y
+PostGIS es complejidad que este volumen no justifica.
 
 ### `request_items`
 
@@ -114,8 +122,8 @@ adelante sin migrar datos.
 ### `claims`
 
 `id`, `request_id`, `volunteer_name`, `volunteer_whatsapp` (opcional),
-`status` (`activo` \| `cancelado` \| `completado`), `created_at`, `expires_at`,
-`ip_hash`.
+`claim_token_hash`, `status` (`activo` \| `cancelado` \| `completado` \|
+`vencido`), `created_at`, `expires_at`, `ip_hash`.
 
 Solo puede existir un claim `activo` por solicitud (índice único parcial).
 
@@ -132,7 +140,14 @@ renderizar sin JOIN), `created_at`. Es la fuente del feed de notificaciones.
 
 ### `rate_limits`
 
-`key` (hash de IP + acción), `count`, `window_start`.
+`key` (clave primaria: `ip_hash` + acción + ventana), `count`, `window_start`.
+Las filas con ventana vencida se borran de forma oportunista al escribir, para
+que la tabla no crezca sin límite.
+
+Todos los `ip_hash` de la aplicación se calculan como HMAC-SHA256 de la IP con
+un secreto en variable de entorno. Un hash simple sería reversible: el espacio
+IPv4 completo se recorre en minutos, de modo que guardar `sha256(ip)` equivale
+a guardar la IP en claro.
 
 ## Flujos
 
@@ -156,15 +171,29 @@ prominente, con instrucción explícita de guardarlo, y lo persiste en
 ### Estados
 
 ```
-abierta ──"Voy en camino"──▶ en_atencion ──solicitante──▶ atendida
+                 ┌──────── solicitante (token) ────────▶ cancelada
+                 │
+abierta ──"Voy en camino"──▶ en_atencion ──solicitante (token)──▶ atendida
    ▲                              │
    └────claim cancelado o vencido─┘
 ```
 
+`cancelada` la usa el solicitante cuando ya resolvió la necesidad por otro medio
+o publicó por error. Es terminal, igual que `atendida`, y ambas salen del
+listado por defecto.
+
 Cualquier persona puede pulsar "Voy en camino" indicando su nombre; eso crea un
-claim con vencimiento a 6 horas y pasa la solicitud a `en_atencion`. Al vencer
-sin completarse, la solicitud vuelve a `abierta`. La expiración se evalúa de
-forma perezosa en cada lectura del listado, sin depender de un cron.
+claim con vencimiento a 6 horas y pasa la solicitud a `en_atencion`.
+
+El voluntario recibe un `claim_token` que se guarda en su `localStorage`, y solo
+con él puede cancelar su propio claim. Sin esto no habría manera de distinguir
+al voluntario que se retracta de un tercero cancelando reclamos ajenos.
+
+Al vencer sin completarse, la solicitud vuelve a `abierta`. La expiración no
+depende de un cron: antes de cada consulta del listado se ejecuta una sentencia
+idempotente que vence los claims cumplidos (`UPDATE … WHERE status = 'activo'
+AND expires_at < now()`) y devuelve las solicitudes afectadas a `abierta`.
+Al marcar una solicitud como atendida, su claim activo pasa a `completado`.
 
 Solo quien tenga el token de gestión marca la solicitud como `atendida` o la
 cancela. Cada transición registra un evento.
@@ -220,9 +249,12 @@ Diseño móvil primero, asumiendo gama baja, datos móviles y batería limitada.
 - Campo trampa oculto contra bots.
 - Validación de número celular colombiano antes de guardar.
 - Botón "Reportar" en cada tarjeta.
-- Vista `/admin` protegida por un token en variable de entorno, que permite
-  ocultar solicitudes y ver los reportes. Sin ella no habría forma de limpiar
-  contenido malicioso.
+- Vista `/admin` que permite ocultar solicitudes y ver los reportes. Sin ella no
+  habría forma de limpiar contenido malicioso. El acceso se hace con un
+  formulario que compara el token con el de la variable de entorno y deja una
+  cookie firmada, `HttpOnly` y `Secure`. El token nunca viaja en la URL: ahí
+  quedaría registrado en los logs de nginx, en el historial del navegador y en
+  la cabecera `Referer` hacia terceros.
 
 ## Pruebas
 
