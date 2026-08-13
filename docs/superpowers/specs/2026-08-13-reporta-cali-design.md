@@ -6,7 +6,8 @@
 ## Contexto
 
 Tras el terremoto del 10 de agosto de 2026, Cali quedó entre las ciudades más
-afectadas. Existen numerosos grupos de ayuda y centros de acopio recolectando
+afectadas, junto con Armenia, Pereira, Buenaventura y Quibdó. Existen numerosos
+grupos de ayuda y centros de acopio recolectando
 donaciones, pero operan desarticulados entre sí. Al mismo tiempo, hay personas
 con necesidades concretas que nadie está atendiendo de forma estratégica.
 
@@ -18,9 +19,10 @@ que va en camino.
 
 Publicar en horas una aplicación web responsive donde:
 
-1. Cualquier persona reporte una necesidad con ubicación en mapa y lista de
-   cosas requeridas, sin crear cuenta.
-2. Los voluntarios vean las solicitudes como tarjetas y como puntos en un mapa.
+1. Cualquier persona reporte una necesidad indicando su ciudad, con ubicación en
+   mapa y lista de cosas requeridas, sin crear cuenta.
+2. Los voluntarios vean las solicitudes de su ciudad como tarjetas y como puntos
+   en un mapa.
 3. Cada solicitud se pueda contactar por WhatsApp con un clic.
 4. Las solicitudes cambien de estado hasta quedar atendidas.
 5. Las notificaciones sean únicamente in-app (sin correo, sin SMTP).
@@ -67,11 +69,23 @@ datos directamente.
 
 ## Modelo de datos
 
+### `cities`
+
+`id`, `slug`, `name`, `department`, `center_lat`, `center_lng`, `default_zoom`,
+`is_active`, `position`.
+
+Semilla inicial: Cali (Valle del Cauca), Armenia (Quindío), Pereira
+(Risaralda), Quibdó (Chocó) y Buenaventura (Valle del Cauca).
+
+Se modela como tabla y no como enum para poder habilitar una ciudad nueva con
+un `INSERT`, sin cambiar código ni volver a desplegar.
+
 ### `requests`
 
 | Campo | Tipo | Notas |
 |---|---|---|
 | `id` | uuid | clave primaria |
+| `city_id` | fk → `cities` | obligatorio |
 | `public_code` | text | código corto único para la URL |
 | `manage_token_hash` | text | hash del token de gestión |
 | `title` | text | |
@@ -88,8 +102,8 @@ datos directamente.
 | `is_hidden` | bool | oculta por moderación |
 | `created_at`, `updated_at`, `fulfilled_at` | timestamp | |
 
-Índices: `status`, `created_at`, `public_code`, y uno sobre `(lat, lng)` para
-las consultas por cercanía.
+Índices: `public_code`, `(city_id, status, created_at)` para el listado
+filtrado, y uno sobre `(lat, lng)` para las consultas por cercanía.
 
 ### `request_items`
 
@@ -108,8 +122,9 @@ Solo puede existir un claim `activo` por solicitud (índice único parcial).
 ### `events`
 
 `id`, `type` (`request_created` \| `request_claimed` \| `request_fulfilled`),
-`request_id`, `payload` jsonb (título y barrio, para renderizar sin JOIN),
-`created_at`. Es la fuente del feed de notificaciones.
+`request_id`, `city_id`, `payload` jsonb (título, barrio y ciudad, para
+renderizar sin JOIN), `created_at`. Es la fuente del feed de notificaciones.
+`city_id` se copia aquí para filtrar el feed sin unir con `requests`.
 
 ### `reports`
 
@@ -123,10 +138,15 @@ Solo puede existir un claim `activo` por solicitud (índice único parcial).
 
 ### Crear una solicitud
 
-Formulario en scroll único: título, ítems (renglones que se añaden y quitan),
-urgencia, ubicación, nombre y WhatsApp. La ubicación se obtiene con el botón
-"usar mi ubicación" o arrastrando el pin sobre el mapa; el mapa arranca
-centrado en Cali.
+Formulario en scroll único: ciudad, título, ítems (renglones que se añaden y
+quitan), urgencia, ubicación, nombre y WhatsApp. La ubicación se obtiene con el
+botón "usar mi ubicación" o arrastrando el pin sobre el mapa.
+
+La ciudad es un desplegable obligatorio poblado desde `cities`. Viene
+preseleccionada con la ciudad activa en la aplicación, y al cambiarla el mapa se
+recentra en las coordenadas de esa ciudad. Se valida en el servidor que el pin
+caiga dentro de un radio razonable del centro de la ciudad elegida; si no,
+se advierte antes de guardar.
 
 Al guardar se genera un `manage_token` aleatorio de 32 bytes. Se almacena solo
 su hash. La respuesta muestra el enlace `/s/{public_code}?t={token}` de forma
@@ -166,16 +186,27 @@ Campanita con panel lateral que lista los eventos recientes. El navegador guarda
 el identificador del último evento visto y calcula el contador de no leídos. El
 sondeo ocurre cada 30 segundos y solo con la pestaña visible.
 
+El feed respeta la ciudad activa: quien está viendo Cali no recibe avisos de
+Armenia. Existe la opción "todas las ciudades" para quien coordine a nivel
+nacional.
+
 ## Interfaz
 
 Diseño móvil primero, asumiendo gama baja, datos móviles y batería limitada.
 
+- **Selector de ciudad** — visible en la cabecera de toda la aplicación, con
+  opción "todas". La elección se guarda en `localStorage` y se refleja en la
+  URL (`/?ciudad=cali`), de modo que un enlace compartido en un grupo de
+  WhatsApp abre directamente la ciudad correcta. En la primera visita, si la
+  persona concede ubicación, se preselecciona la ciudad más cercana; si no,
+  queda en "todas".
 - **Inicio** — conmutador Lista/Mapa. En móvil abre en Lista, porque el mapa
   pesa; en escritorio, mapa a la izquierda y tarjetas a la derecha,
-  sincronizados. Filtros por estado, urgencia, texto y cercanía. Por defecto se
+  sincronizados. Filtros por ciudad, estado, urgencia, texto y cercanía. El mapa
+  se centra en la ciudad activa. Por defecto se
   muestran las solicitudes `abierta` y `en_atencion`; las atendidas y canceladas
   quedan accesibles solo al activar el filtro correspondiente.
-- **Tarjeta** — título, urgencia, barrio, primeros ítems, estado, botón de
+- **Tarjeta** — título, urgencia, ciudad y barrio, primeros ítems, estado, botón de
   WhatsApp y botón de "Voy en camino". Al pulsarla, abre el detalle.
 - **Detalle** `/s/{code}` — mapa, ítems completos, historial de estado, acciones.
   Con token válido aparecen editar, marcar atendida y cancelar.
@@ -197,7 +228,8 @@ Diseño móvil primero, asumiendo gama baja, datos móviles y batería limitada.
 
 Vitest sobre la lógica cuyo fallo causa daño real: transiciones de estado,
 expiración de claims, unicidad del claim activo, límites por IP, verificación
-del token de gestión y normalización de números a formato `wa.me`.
+del token de gestión, filtrado por ciudad, validación del pin contra el centro
+de la ciudad y normalización de números a formato `wa.me`.
 
 Playwright sobre dos recorridos: crear una solicitud y verla en el listado;
 reclamarla, marcarla atendida y confirmar que desaparece de las activas.
