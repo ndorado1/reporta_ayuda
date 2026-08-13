@@ -2,3 +2,8 @@ node_modules/
 .next/
 .env
 .env.local
+.superpowers/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
