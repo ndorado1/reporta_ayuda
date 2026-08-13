@@ -18,7 +18,7 @@ export function ItemsField({
 
   return (
     <fieldset className="space-y-3">
-      <legend className="text-base font-semibold text-[--color-primary]">
+      <legend className="text-base font-semibold text-(--color-primary)">
         ¿Qué necesitan?
       </legend>
 
@@ -33,7 +33,7 @@ export function ItemsField({
               value={item.name}
               onChange={(e) => update(index, { name: e.target.value })}
               placeholder="Agua, pañales, cobijas…"
-              className="min-h-[44px] w-full rounded-lg border border-[--color-line] px-3 text-base"
+              className="min-h-[44px] w-full rounded-lg border border-(--color-line) px-3 text-base"
             />
           </div>
           <div className="sm:w-40">
@@ -45,7 +45,7 @@ export function ItemsField({
               value={item.quantity}
               onChange={(e) => update(index, { quantity: e.target.value })}
               placeholder="10 litros"
-              className="min-h-[44px] w-full rounded-lg border border-[--color-line] px-3 text-base"
+              className="min-h-[44px] w-full rounded-lg border border-(--color-line) px-3 text-base"
             />
           </div>
           {items.length > 1 && (
@@ -53,7 +53,7 @@ export function ItemsField({
               type="button"
               onClick={() => onChange(items.filter((_, i) => i !== index))}
               aria-label={`Quitar ${item.name || `renglón ${index + 1}`}`}
-              className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-[--color-line] text-[--color-muted] transition-colors duration-150 hover:border-[--color-urgente] hover:text-[--color-urgente]"
+              className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-(--color-line) text-(--color-muted) transition-colors duration-150 hover:border-(--color-urgente) hover:text-(--color-urgente)"
             >
               <X aria-hidden="true" className="h-5 w-5" />
             </button>

@@ -18,9 +18,9 @@ type FeedEvent = {
 const POLL_MS = 30_000
 
 const DESCRIPTIONS = {
-  request_created: { text: 'Nueva solicitud', Icon: AlertCircle, className: 'text-[--color-urgente]' },
-  request_claimed: { text: 'Alguien va en camino', Icon: Truck, className: 'text-[--color-cta]' },
-  request_fulfilled: { text: 'Solicitud atendida', Icon: PackageCheck, className: 'text-[--color-baja]' },
+  request_created: { text: 'Nueva solicitud', Icon: AlertCircle, className: 'text-(--color-urgente)' },
+  request_claimed: { text: 'Alguien va en camino', Icon: Truck, className: 'text-(--color-cta)' },
+  request_fulfilled: { text: 'Solicitud atendida', Icon: PackageCheck, className: 'text-(--color-baja)' },
 }
 
 export function NotificationBell() {
@@ -82,11 +82,11 @@ export function NotificationBell() {
         onClick={toggle}
         aria-label={unseen > 0 ? `Novedades: ${unseen} sin leer` : 'Novedades'}
         aria-expanded={open}
-        className="relative flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-[--color-line] bg-white transition-colors duration-150 hover:border-[--color-cta]"
+        className="relative flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg border border-(--color-line) bg-white transition-colors duration-150 hover:border-(--color-cta)"
       >
-        <Bell aria-hidden="true" className="h-5 w-5 text-[--color-secondary]" />
+        <Bell aria-hidden="true" className="h-5 w-5 text-(--color-secondary)" />
         {unseen > 0 && (
-          <span className="absolute -right-1 -top-1 min-w-[22px] rounded-full bg-[--color-urgente] px-1.5 text-sm font-bold leading-[22px] text-white">
+          <span className="absolute -right-1 -top-1 min-w-[22px] rounded-full bg-(--color-urgente) px-1.5 text-sm font-bold leading-[22px] text-white">
             {unseen > 9 ? '9+' : unseen}
           </span>
         )}
@@ -102,12 +102,12 @@ export function NotificationBell() {
             className="h-full w-full max-w-sm overflow-y-auto bg-white p-4 shadow-xl"
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[--color-primary]">Novedades</h2>
+              <h2 className="text-lg font-bold text-(--color-primary)">Novedades</h2>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Cerrar novedades"
-                className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg text-[--color-muted] transition-colors duration-150 hover:text-[--color-ink]"
+                className="flex min-h-[44px] min-w-[44px] cursor-pointer items-center justify-center rounded-lg text-(--color-muted) transition-colors duration-150 hover:text-(--color-ink)"
               >
                 <X aria-hidden="true" className="h-5 w-5" />
               </button>
@@ -118,19 +118,19 @@ export function NotificationBell() {
             </p>
 
             {events.length === 0 ? (
-              <p className="mt-6 text-[--color-muted]">Todavía no hay movimientos.</p>
+              <p className="mt-6 text-(--color-muted)">Todavía no hay movimientos.</p>
             ) : (
               <ul className="mt-4 space-y-3">
                 {events.map((event) => {
                   const info = DESCRIPTIONS[event.type]
                   return (
-                    <li key={event.id} className="border-b border-[--color-line] pb-3 last:border-0">
+                    <li key={event.id} className="border-b border-(--color-line) pb-3 last:border-0">
                       <p className={`flex items-center gap-2 text-sm font-semibold ${info.className}`}>
                         <info.Icon aria-hidden="true" className="h-4 w-4" />
                         {info.text}
                       </p>
-                      <p className="mt-1 font-medium text-[--color-ink]">{event.title}</p>
-                      <p className="text-sm text-[--color-muted]">
+                      <p className="mt-1 font-medium text-(--color-ink)">{event.title}</p>
+                      <p className="text-sm text-(--color-muted)">
                         {event.neighborhood ? `${event.neighborhood}, ` : ''}{event.city}
                       </p>
                     </li>
@@ -142,7 +142,7 @@ export function NotificationBell() {
             <Link
               href="/"
               onClick={() => setOpen(false)}
-              className="mt-6 block cursor-pointer text-center font-semibold text-[--color-cta] underline"
+              className="mt-6 block cursor-pointer text-center font-semibold text-(--color-cta) underline"
             >
               Ver todas las solicitudes
             </Link>

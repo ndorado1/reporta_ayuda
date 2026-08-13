@@ -6,17 +6,17 @@ import type { Urgency } from '@/lib/requests'
 const STYLES: Record<Urgency, { label: string; className: string; Icon: typeof Clock }> = {
   alta: {
     label: 'Urgencia alta',
-    className: 'bg-[--color-urgente-soft] text-[--color-urgente]',
+    className: 'bg-(--color-urgente-soft) text-(--color-urgente)',
     Icon: AlertTriangle,
   },
   media: {
     label: 'Urgencia media',
-    className: 'bg-[--color-media-soft] text-[--color-media]',
+    className: 'bg-(--color-media-soft) text-(--color-media)',
     Icon: Clock,
   },
   baja: {
     label: 'Urgencia baja',
-    className: 'bg-[--color-baja-soft] text-[--color-baja]',
+    className: 'bg-(--color-baja-soft) text-(--color-baja)',
     Icon: ArrowDown,
   },
 }

@@ -36,7 +36,7 @@ export default function RequestMap({
       center={[center.lat, center.lng]}
       zoom={zoom}
       scrollWheelZoom
-      className="h-[60vh] w-full rounded-xl border border-[--color-line]"
+      className="h-[60vh] w-full rounded-xl border border-(--color-line)"
     >
       <TileLayer
         attribution='&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -51,7 +51,7 @@ export default function RequestMap({
           <Popup>
             <strong className="block text-base">{item.title}</strong>
             <span className="text-sm">{item.neighborhood ?? item.cityName}</span>
-            <Link href={`/s/${item.publicCode}`} className="mt-2 block font-semibold text-[--color-cta] underline">
+            <Link href={`/s/${item.publicCode}`} className="mt-2 block font-semibold text-(--color-cta) underline">
               Ver solicitud
             </Link>
           </Popup>

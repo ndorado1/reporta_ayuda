@@ -11,8 +11,8 @@ export default async function NewRequestPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[--color-primary]">Pedir ayuda</h1>
-        <p className="mt-1 text-[--color-muted]">
+        <h1 className="text-2xl font-bold tracking-tight text-(--color-primary)">Pedir ayuda</h1>
+        <p className="mt-1 text-(--color-muted)">
           Cuenta qué necesitas y dónde. Quien pueda ayudarte te escribirá por WhatsApp.
         </p>
       </div>

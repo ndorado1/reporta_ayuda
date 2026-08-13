@@ -9,15 +9,15 @@ export function StatusBadge({
   claimedBy?: string | null
 }) {
   const map = {
-    abierta: { label: 'Sin atender', className: 'bg-slate-100 text-[--color-secondary]', Icon: CircleDot },
+    abierta: { label: 'Sin atender', className: 'bg-slate-100 text-(--color-secondary)', Icon: CircleDot },
     en_atencion: {
       label: claimedBy ? `${claimedBy} va en camino` : 'Alguien va en camino',
-      className: 'bg-sky-50 text-[--color-cta]',
+      className: 'bg-sky-50 text-(--color-cta)',
       Icon: Truck,
     },
-    atendida: { label: 'Atendida', className: 'bg-[--color-baja-soft] text-[--color-baja]', Icon: CheckCircle2 },
-    cancelada: { label: 'Cancelada', className: 'bg-slate-100 text-[--color-muted]', Icon: XCircle },
-    archivada: { label: 'Archivada', className: 'bg-slate-100 text-[--color-muted]', Icon: Archive },
+    atendida: { label: 'Atendida', className: 'bg-(--color-baja-soft) text-(--color-baja)', Icon: CheckCircle2 },
+    cancelada: { label: 'Cancelada', className: 'bg-slate-100 text-(--color-muted)', Icon: XCircle },
+    archivada: { label: 'Archivada', className: 'bg-slate-100 text-(--color-muted)', Icon: Archive },
   }[status]
 
   return (

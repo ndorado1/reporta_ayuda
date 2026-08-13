@@ -83,8 +83,8 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
     return <RequestCreated {...created} whatsapp={whatsapp} title={title} />
   }
 
-  const field = 'min-h-[44px] w-full rounded-lg border border-[--color-line] px-3 text-base'
-  const label = 'block text-base font-semibold text-[--color-primary]'
+  const field = 'min-h-[44px] w-full rounded-lg border border-(--color-line) px-3 text-base'
+  const label = 'block text-base font-semibold text-(--color-primary)'
 
   return (
     // noValidate: la validación nativa del navegador aparece en el idioma del
@@ -137,7 +137,7 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
 
       <div>
         <label htmlFor="descripcion" className={label}>
-          Detalles <span className="font-normal text-[--color-muted]">(opcional)</span>
+          Detalles <span className="font-normal text-(--color-muted)">(opcional)</span>
         </label>
         <textarea
           id="descripcion"
@@ -145,7 +145,7 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
           maxLength={1000}
-          className="w-full rounded-lg border border-[--color-line] p-3 text-base"
+          className="w-full rounded-lg border border-(--color-line) p-3 text-base"
         />
       </div>
 
@@ -161,21 +161,21 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
 
       <div>
         <label htmlFor="barrio" className={label}>
-          Barrio o comuna <span className="font-normal text-[--color-muted]">(opcional)</span>
+          Barrio o comuna <span className="font-normal text-(--color-muted)">(opcional)</span>
         </label>
         <input id="barrio" value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} className={field} />
       </div>
 
       <div>
         <label htmlFor="direccion" className={label}>
-          Dirección o punto de referencia <span className="font-normal text-[--color-muted]">(opcional)</span>
+          Dirección o punto de referencia <span className="font-normal text-(--color-muted)">(opcional)</span>
         </label>
         <input id="direccion" value={addressText} onChange={(e) => setAddressText(e.target.value)} className={field} />
       </div>
 
       <div>
         <label htmlFor="personas" className={label}>
-          ¿Cuántas personas son? <span className="font-normal text-[--color-muted]">(opcional)</span>
+          ¿Cuántas personas son? <span className="font-normal text-(--color-muted)">(opcional)</span>
         </label>
         <input
           id="personas"
@@ -206,7 +206,7 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
           className={field}
           required
         />
-        <p className="mt-1 text-sm text-[--color-muted]">
+        <p className="mt-1 text-sm text-(--color-muted)">
           No se muestra en la lista. Solo lo ve quien pulse el botón de contactarte.
         </p>
       </div>
@@ -232,18 +232,18 @@ export function NewRequestForm({ cities }: { cities: City[] }) {
           className="mt-1 h-6 w-6 shrink-0 cursor-pointer"
           required
         />
-        <span className="text-sm text-[--color-secondary]">
+        <span className="text-sm text-(--color-secondary)">
           Autorizo publicar mi nombre, mi ubicación y lo que necesito, y que mi número
           de WhatsApp se entregue a quien quiera ayudarme. Puedo pedir que se borre
           cuando quiera. Leer la{' '}
-          <Link href="/privacidad" className="cursor-pointer font-semibold text-[--color-cta] underline">
+          <Link href="/privacidad" className="cursor-pointer font-semibold text-(--color-cta) underline">
             política de datos
           </Link>.
         </span>
       </label>
 
       {error && (
-        <p role="alert" className="rounded-lg bg-[--color-urgente-soft] p-3 text-base font-semibold text-[--color-urgente]">
+        <p role="alert" className="rounded-lg bg-(--color-urgente-soft) p-3 text-base font-semibold text-(--color-urgente)">
           {error}
         </p>
       )}

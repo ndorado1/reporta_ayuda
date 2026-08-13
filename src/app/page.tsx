@@ -38,10 +38,10 @@ export default async function HomePage({
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-[--color-primary]">
+        <h1 className="text-2xl font-bold tracking-tight text-(--color-primary)">
           Solicitudes de ayuda
         </h1>
-        <p className="mt-1 text-[--color-muted]">
+        <p className="mt-1 text-(--color-muted)">
           {items.length === 0
             ? 'No hay solicitudes con estos filtros.'
             : `${items.length} ${items.length === 1 ? 'solicitud' : 'solicitudes'}.`}

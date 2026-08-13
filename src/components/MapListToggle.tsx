@@ -22,7 +22,7 @@ export function MapListToggle({ current }: { current: 'lista' | 'mapa' }) {
         type="button"
         onClick={() => go('lista')}
         aria-pressed={current === 'lista'}
-        className={`${base} ${current === 'lista' ? 'bg-white text-[--color-primary] shadow-sm' : 'text-[--color-muted]'}`}
+        className={`${base} ${current === 'lista' ? 'bg-white text-(--color-primary) shadow-sm' : 'text-(--color-muted)'}`}
       >
         <List aria-hidden="true" className="h-5 w-5" /> Lista
       </button>
@@ -30,7 +30,7 @@ export function MapListToggle({ current }: { current: 'lista' | 'mapa' }) {
         type="button"
         onClick={() => go('mapa')}
         aria-pressed={current === 'mapa'}
-        className={`${base} ${current === 'mapa' ? 'bg-white text-[--color-primary] shadow-sm' : 'text-[--color-muted]'}`}
+        className={`${base} ${current === 'mapa' ? 'bg-white text-(--color-primary) shadow-sm' : 'text-(--color-muted)'}`}
       >
         <MapIcon aria-hidden="true" className="h-5 w-5" /> Mapa
       </button>

@@ -29,7 +29,7 @@ export function RequestFilters() {
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
       <div className="relative flex-1">
-        <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-[--color-muted]" />
+        <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-(--color-muted)" />
         <label htmlFor="buscar" className="sr-only">Buscar por necesidad o barrio</label>
         <input
           id="buscar"
@@ -37,7 +37,7 @@ export function RequestFilters() {
           defaultValue={params.get('buscar') ?? ''}
           onChange={(e) => update('buscar', e.target.value)}
           placeholder="Buscar por barrio o necesidad"
-          className="min-h-[44px] w-full rounded-lg border border-[--color-line] bg-white pl-10 pr-3 text-base"
+          className="min-h-[44px] w-full rounded-lg border border-(--color-line) bg-white pl-10 pr-3 text-base"
         />
       </div>
 
@@ -46,7 +46,7 @@ export function RequestFilters() {
         id="urgencia"
         value={params.get('urgencia') ?? ''}
         onChange={(e) => update('urgencia', e.target.value)}
-        className="min-h-[44px] cursor-pointer rounded-lg border border-[--color-line] bg-white px-3 text-base"
+        className="min-h-[44px] cursor-pointer rounded-lg border border-(--color-line) bg-white px-3 text-base"
       >
         {URGENCIES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -56,7 +56,7 @@ export function RequestFilters() {
         id="estado"
         value={params.get('estado') ?? ''}
         onChange={(e) => update('estado', e.target.value)}
-        className="min-h-[44px] cursor-pointer rounded-lg border border-[--color-line] bg-white px-3 text-base"
+        className="min-h-[44px] cursor-pointer rounded-lg border border-(--color-line) bg-white px-3 text-base"
       >
         {STATUSES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>

@@ -29,14 +29,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="es-CO">
-      <body className={`${publicSans.className} min-h-dvh bg-[--color-background]`}>
+      <body className={`${publicSans.className} min-h-dvh bg-(--color-background)`}>
         <a href="#contenido" className="skip-link">Saltar al contenido</a>
         <SiteHeader cities={cities.map((c) => ({ slug: c.slug, name: c.name }))} />
         <main id="contenido" className="mx-auto max-w-6xl px-4 pb-28 pt-4">
           {children}
         </main>
 
-        <footer className="mx-auto max-w-6xl px-4 pb-24 pt-8 text-sm text-[--color-muted]">
+        <footer className="mx-auto max-w-6xl px-4 pb-24 pt-8 text-sm text-(--color-muted)">
           <nav className="flex flex-wrap gap-4">
             <Link href="/mis-solicitudes" className="cursor-pointer underline">Mis solicitudes</Link>
             <Link href="/privacidad" className="cursor-pointer underline">Política de datos</Link>
@@ -50,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Acción principal siempre alcanzable con el pulgar. */}
         <Link
           href="/nueva"
-          className="fixed bottom-4 left-1/2 z-40 flex min-h-[52px] -translate-x-1/2 cursor-pointer items-center gap-2 rounded-full bg-[--color-cta] px-6 text-base font-semibold text-white shadow-lg transition-colors duration-150 hover:bg-[--color-cta-hover]"
+          className="fixed bottom-4 left-1/2 z-40 flex min-h-[52px] -translate-x-1/2 cursor-pointer items-center gap-2 rounded-full bg-(--color-cta) px-6 text-base font-semibold text-white shadow-lg transition-colors duration-150 hover:bg-(--color-cta-hover)"
         >
           <Plus aria-hidden="true" className="h-5 w-5" />
           Pedir ayuda

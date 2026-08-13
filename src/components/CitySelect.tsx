@@ -52,13 +52,13 @@ export function CitySelect({ cities }: { cities: Option[] }) {
   }
 
   return (
-    <label className="flex items-center gap-2 text-sm font-medium text-[--color-secondary]">
+    <label className="flex items-center gap-2 text-sm font-medium text-(--color-secondary)">
       <MapPin aria-hidden="true" className="h-5 w-5 shrink-0" />
       <span className="sr-only">Ciudad</span>
       <select
         value={activeSlug}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-[44px] cursor-pointer rounded-lg border border-[--color-line] bg-white px-3 py-2 text-base font-semibold text-[--color-ink] transition-colors duration-150 hover:border-[--color-cta]"
+        className="min-h-[44px] cursor-pointer rounded-lg border border-(--color-line) bg-white px-3 py-2 text-base font-semibold text-(--color-ink) transition-colors duration-150 hover:border-(--color-cta)"
       >
         <option value={ALL_CITIES}>Todas las ciudades</option>
         {cities.map((city) => (

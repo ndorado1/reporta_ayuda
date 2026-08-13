@@ -62,16 +62,16 @@ export default function LocationPicker({
         {locating ? 'Buscando…' : 'Usar mi ubicación'}
       </Button>
 
-      {error && <p role="alert" className="text-sm font-medium text-[--color-urgente]">{error}</p>}
+      {error && <p role="alert" className="text-sm font-medium text-(--color-urgente)">{error}</p>}
 
-      <p className="text-sm text-[--color-muted]">
+      <p className="text-sm text-(--color-muted)">
         Toca el mapa o arrastra el punto para marcar dónde se necesita la ayuda.
       </p>
 
       <MapContainer
         center={[lat, lng]}
         zoom={zoom}
-        className="h-64 w-full rounded-xl border border-[--color-line]"
+        className="h-64 w-full rounded-xl border border-(--color-line)"
       >
         <TileLayer
           attribution='&copy; colaboradores de <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

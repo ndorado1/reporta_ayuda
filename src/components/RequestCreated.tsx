@@ -35,15 +35,15 @@ export function RequestCreated({
   }
 
   return (
-    <div className="space-y-5 rounded-xl border border-[--color-line] bg-white p-5">
+    <div className="space-y-5 rounded-xl border border-(--color-line) bg-white p-5">
       <div className="flex items-center gap-3">
-        <CheckCircle2 aria-hidden="true" className="h-8 w-8 shrink-0 text-[--color-baja]" />
-        <h1 className="text-xl font-bold text-[--color-primary]">Tu solicitud ya está publicada</h1>
+        <CheckCircle2 aria-hidden="true" className="h-8 w-8 shrink-0 text-(--color-baja)" />
+        <h1 className="text-xl font-bold text-(--color-primary)">Tu solicitud ya está publicada</h1>
       </div>
 
-      <div className="rounded-lg bg-[--color-media-soft] p-4">
-        <p className="font-semibold text-[--color-media]">Guarda este enlace</p>
-        <p className="mt-1 text-sm text-[--color-secondary]">
+      <div className="rounded-lg bg-(--color-media-soft) p-4">
+        <p className="font-semibold text-(--color-media)">Guarda este enlace</p>
+        <p className="mt-1 text-sm text-(--color-secondary)">
           Es la única forma de marcar tu solicitud como atendida o de borrarla.
           Si borras los datos del navegador, lo pierdes.
         </p>
@@ -65,7 +65,7 @@ export function RequestCreated({
         </div>
       </div>
 
-      <Link href={`/s/${publicCode}`} className="block cursor-pointer text-center font-semibold text-[--color-cta] underline">
+      <Link href={`/s/${publicCode}`} className="block cursor-pointer text-center font-semibold text-(--color-cta) underline">
         Ver mi solicitud publicada
       </Link>
     </div>

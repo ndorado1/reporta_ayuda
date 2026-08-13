@@ -10,19 +10,19 @@ export function RequestCard({ item }: { item: RequestListItem }) {
   const remaining = item.itemCount - item.itemsPreview.length
 
   return (
-    <article className="rounded-xl border border-[--color-line] bg-white p-4 shadow-sm transition-colors duration-150 hover:border-[--color-cta]">
+    <article className="rounded-xl border border-(--color-line) bg-white p-4 shadow-sm transition-colors duration-150 hover:border-(--color-cta)">
       <div className="flex flex-wrap items-center gap-2">
         <UrgencyBadge urgency={item.urgency} />
         <StatusBadge status={item.status} claimedBy={item.claimedBy} />
       </div>
 
-      <h2 className="mt-3 text-lg font-bold leading-snug text-[--color-primary]">
+      <h2 className="mt-3 text-lg font-bold leading-snug text-(--color-primary)">
         <Link href={`/s/${item.publicCode}`} className="cursor-pointer hover:underline">
           {item.title}
         </Link>
       </h2>
 
-      <p className="mt-1 flex flex-wrap items-center gap-1 text-sm text-[--color-muted]">
+      <p className="mt-1 flex flex-wrap items-center gap-1 text-sm text-(--color-muted)">
         <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" />
         {item.neighborhood ? `${item.neighborhood}, ` : ''}{item.cityName}
         {item.distanceKm !== undefined && (
@@ -35,12 +35,12 @@ export function RequestCard({ item }: { item: RequestListItem }) {
 
       <ul className="mt-3 flex flex-wrap gap-2">
         {item.itemsPreview.map((name) => (
-          <li key={name} className="rounded-md bg-slate-100 px-2 py-1 text-sm font-medium text-[--color-secondary]">
+          <li key={name} className="rounded-md bg-slate-100 px-2 py-1 text-sm font-medium text-(--color-secondary)">
             {name}
           </li>
         ))}
         {remaining > 0 && (
-          <li className="rounded-md px-2 py-1 text-sm font-medium text-[--color-muted]">
+          <li className="rounded-md px-2 py-1 text-sm font-medium text-(--color-muted)">
             y {remaining} más
           </li>
         )}
