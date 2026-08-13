@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Bell, X, PackageCheck, Truck, AlertCircle } from 'lucide-react'
@@ -92,8 +93,18 @@ export function NotificationBell() {
         )}
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-40 flex justify-end bg-black/40" onClick={() => setOpen(false)}>
+      {/* El panel se monta en <body> y no aquí dentro. Este componente vive
+          en la cabecera, y basta con que un ancestro tenga `filter`,
+          `backdrop-filter` o `transform` para que deje de ser el viewport
+          quien resuelve la posición de un elemento `fixed`: pasa a serlo ese
+          ancestro. El panel entonces se recorta a la altura de la cabecera,
+          que es lo que ocurría. Sacarlo a <body> lo vuelve inmune a lo que
+          se le añada a la cabecera en el futuro.
+
+          z-50 y no z-40: el botón flotante de "Pedir ayuda" está en z-40 y
+          se colaba por encima del fondo oscurecido. */}
+      {open && createPortal(
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={() => setOpen(false)}>
           <aside
             role="dialog"
             aria-label="Novedades"
@@ -147,7 +158,8 @@ export function NotificationBell() {
               Ver todas las solicitudes
             </Link>
           </aside>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   )

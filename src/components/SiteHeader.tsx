@@ -5,9 +5,13 @@ import { NotificationBell } from './NotificationBell'
 
 type City = { slug: string; name: string }
 
+// Fondo blanco opaco, sin `backdrop-blur`: desenfocar lo que pasa por debajo
+// obliga al móvil a recomponer la cabecera en cada scroll, que en gama baja se
+// nota, y además creaba un contexto de posicionamiento que recortaba el panel
+// de novedades (ver NotificationBell).
 export function SiteHeader({ cities }: { cities: City[] }) {
   return (
-    <header className="sticky top-0 z-30 border-b border-(--color-line) bg-white/95 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-(--color-line) bg-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
         <Link href="/" className="mr-auto flex items-center gap-2">
           {/* `img` y no `next/image`: la optimización de imágenes necesita
