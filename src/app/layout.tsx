@@ -17,12 +17,17 @@ export const metadata: Metadata = {
 
 // Las ciudades activas viven en una tabla, no en una lista fija en el
 // código, para poder habilitar una ciudad nueva con un INSERT y sin
-// desplegar (p. ej. si el sismo golpea otra ciudad mañana). Sin esta
-// revalidación, el layout quedaría prerrenderizado como estático y ese
-// INSERT no se vería hasta el siguiente build. Un minuto de desfase es
-// irrelevante para una lista que cambia rarísimo, y evita el costo de
-// `force-dynamic`, que renderizaría todo el layout en cada petición.
-export const revalidate = 60
+// desplegar (p. ej. si el sismo golpea otra ciudad mañana).
+//
+// El layout se renderiza en cada petición, no en el build. Con `revalidate`
+// Next.js prerrenderiza en el build las páginas que no son dinámicas
+// (/privacidad, /nueva, /mis-solicitudes, /admin/login) y para ello tiene que
+// consultar la base: eso obliga a que la base de producción sea alcanzable
+// desde donde se construye la imagen, lo que rompe el despliegue en cualquier
+// constructor aislado. Las páginas con datos ya eran `force-dynamic`, así que
+// lo único que se pierde es el prerrenderizado de cuatro páginas estáticas, a
+// cambio de un SELECT indexado sobre una tabla de cinco filas por petición.
+export const dynamic = 'force-dynamic'
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cities = await listCities()
