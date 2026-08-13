@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
+import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest'
 import { testDb, resetTestDb, seedTestCity } from '@/test/db'
 import { claims, requests } from '@/db/schema'
 import { and, eq } from 'drizzle-orm'
+import { PgDatabase } from 'drizzle-orm/pg-core'
 import { claimRequest, cancelClaim, expireStaleClaims } from './claims'
 
 beforeAll(() => { process.env.IP_HASH_SECRET = 'secreto-de-prueba' })
@@ -153,13 +154,60 @@ describe('expireStaleClaims', () => {
       .set({ expiresAt: new Date(Date.now() - 1000) })
       .where(eq(claims.requestId, req.id))
 
+    // Segunda solicitud con un claim vigente: sin esto, tras expireStaleClaims()
+    // la única solicitud en_atencion pasa a abierta y la consulta de abajo
+    // devuelve una lista vacía, con lo que el bucle de aserciones nunca se
+    // ejecuta y la prueba "pasa" sin comprobar nada.
+    const city = await seedTestCity()
+    const [req2] = await testDb.insert(requests).values({
+      cityId: city.id, publicCode: 'BBB222', manageTokenHash: 'h',
+      title: 'Comida', requesterName: 'Ana', lat: 3.45, lng: -76.53, ipHash: 'i',
+    }).returning()
+    await claimRequest({ publicCode: 'BBB222', volunteerName: 'Marta' }, '2.2.2.2')
+
     await expireStaleClaims()
 
     const enAtencion = await testDb.select().from(requests).where(eq(requests.status, 'en_atencion'))
+    expect(enAtencion.length).toBeGreaterThan(0)
     for (const r of enAtencion) {
       const activeClaims = await testDb.select().from(claims)
         .where(and(eq(claims.requestId, r.id), eq(claims.status, 'activo')))
       expect(activeClaims.length).toBeGreaterThan(0)
     }
+
+    // La solicitud con claim vigente no debió tocarse.
+    const [row2] = await testDb.select().from(requests).where(eq(requests.id, req2.id))
+    expect(row2.status).toBe('en_atencion')
+  })
+
+  it('revierte el vencimiento del claim si falla la reapertura de la solicitud', async () => {
+    const req = await makeRequest()
+    await claimRequest({ publicCode: 'AAA111', volunteerName: 'Luis' }, '1.1.1.1')
+    await testDb.update(claims)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(claims.requestId, req.id))
+
+    // Fuerza un fallo en la segunda escritura (reabrir la solicitud) para
+    // demostrar que la transacción revierte también la primera (vencer el
+    // claim). db y tx heredan `update` del mismo PgDatabase.prototype, así
+    // que interceptarlo ahí alcanza a tx.update dentro de la transacción.
+    const originalUpdate = PgDatabase.prototype.update
+    const spy = vi.spyOn(PgDatabase.prototype, 'update')
+      .mockImplementation(function (this: unknown, ...args: Parameters<typeof originalUpdate>) {
+        if (args[0] === requests) throw new Error('fallo simulado de base de datos')
+        return originalUpdate.apply(this, args)
+      })
+
+    try {
+      await expect(expireStaleClaims()).rejects.toThrow(/fallo simulado/)
+    } finally {
+      spy.mockRestore()
+    }
+
+    const [claim] = await testDb.select().from(claims).where(eq(claims.requestId, req.id))
+    expect(claim.status).toBe('activo')
+
+    const [row] = await testDb.select().from(requests).where(eq(requests.id, req.id))
+    expect(row.status).toBe('en_atencion')
   })
 })
