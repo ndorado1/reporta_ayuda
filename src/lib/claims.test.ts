@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
 import { testDb, resetTestDb, seedTestCity } from '@/test/db'
 import { claims, requests } from '@/db/schema'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { claimRequest, cancelClaim, expireStaleClaims } from './claims'
 
 beforeAll(() => { process.env.IP_HASH_SECRET = 'secreto-de-prueba' })
@@ -43,6 +43,23 @@ describe('claimRequest', () => {
     await expect(
       claimRequest({ publicCode: 'ZZZ999', volunteerName: 'Luis' }, '1.1.1.1')
     ).rejects.toThrow(/no existe/i)
+  })
+
+  it('maneja dos reclamos simultáneos: uno gana y el otro recibe el mensaje en español', async () => {
+    await makeRequest()
+
+    const results = await Promise.allSettled([
+      claimRequest({ publicCode: 'AAA111', volunteerName: 'Luis' }, '1.1.1.1'),
+      claimRequest({ publicCode: 'AAA111', volunteerName: 'Marta' }, '2.2.2.2'),
+    ])
+
+    const fulfilled = results.filter((r) => r.status === 'fulfilled')
+    const rejected = results.filter((r) => r.status === 'rejected')
+    expect(fulfilled).toHaveLength(1)
+    expect(rejected).toHaveLength(1)
+    const [{ reason }] = rejected as PromiseRejectedResult[]
+    expect(reason).toBeInstanceOf(Error)
+    expect(reason.message).toMatch(/ya está siendo atendida/i)
   })
 })
 
@@ -127,5 +144,22 @@ describe('expireStaleClaims', () => {
 
     const [row] = await testDb.select().from(requests)
     expect(row.status).toBe('atendida')
+  })
+
+  it('no deja ninguna solicitud en_atencion sin un claim activo asociado', async () => {
+    const req = await makeRequest()
+    await claimRequest({ publicCode: 'AAA111', volunteerName: 'Luis' }, '1.1.1.1')
+    await testDb.update(claims)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(claims.requestId, req.id))
+
+    await expireStaleClaims()
+
+    const enAtencion = await testDb.select().from(requests).where(eq(requests.status, 'en_atencion'))
+    for (const r of enAtencion) {
+      const activeClaims = await testDb.select().from(claims)
+        .where(and(eq(claims.requestId, r.id), eq(claims.status, 'activo')))
+      expect(activeClaims.length).toBeGreaterThan(0)
+    }
   })
 })
