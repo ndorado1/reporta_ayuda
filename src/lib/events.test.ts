@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { testDb, resetTestDb, seedTestCity } from '@/test/db'
-import { requests, cities } from '@/db/schema'
+import { requests, cities, events } from '@/db/schema'
 import { recordEvent, listEvents, countEventsSince } from './events'
 
 async function makeRequest(cityId: string, code: string) {
@@ -76,5 +76,52 @@ describe('eventos', () => {
     await recordEvent({ type: 'request_created', requestId: req.id, cityId: city.id, payload: { title: 'x', neighborhood: null, city: 'Cali' } })
 
     expect(await countEventsSince({})).toBe(1)
+  })
+
+  it('cuenta el total real aunque haya más de 50 eventos', async () => {
+    const city = await seedTestCity()
+    const req = await makeRequest(city.id, 'AAA111')
+    const rows = Array.from({ length: 55 }, () => ({
+      type: 'request_created' as const,
+      requestId: req.id,
+      cityId: city.id,
+      payload: { title: 'x', neighborhood: null, city: 'Cali' },
+    }))
+    await testDb.insert(events).values(rows)
+
+    expect(await countEventsSince({})).toBe(55)
+  })
+
+  it('si el sinceId no existe, cuenta todo en vez de nada', async () => {
+    const city = await seedTestCity()
+    const req = await makeRequest(city.id, 'AAA111')
+    await recordEvent({
+      type: 'request_created', requestId: req.id, cityId: city.id,
+      payload: { title: 'x', neighborhood: null, city: 'Cali' },
+    })
+
+    const idInexistente = '00000000-0000-0000-0000-000000000000'
+    expect(await countEventsSince({ sinceId: idInexistente })).toBe(1)
+  })
+
+  it('desempata por id cuando dos eventos comparten transacción y por tanto el mismo created_at', async () => {
+    const city = await seedTestCity()
+    const req = await makeRequest(city.id, 'AAA111')
+    const base = { requestId: req.id, cityId: city.id, payload: { title: 'x', neighborhood: null, city: 'Cali' } }
+
+    await testDb.transaction(async (tx) => {
+      await tx.insert(events).values({ ...base, type: 'request_created' })
+      await tx.insert(events).values({ ...base, type: 'request_claimed' })
+    })
+
+    const feed = await listEvents({})
+    expect(feed).toHaveLength(2)
+    // now() de Postgres es por transacción: ambos comparten el mismo instante.
+    expect(feed[0].createdAt.getTime()).toBe(feed[1].createdAt.getTime())
+
+    // El primero del orden (desempatado por id) no tiene nada después.
+    expect(await countEventsSince({ sinceId: feed[0].id })).toBe(0)
+    // El segundo del orden sí tiene un evento después: el primero.
+    expect(await countEventsSince({ sinceId: feed[1].id })).toBe(1)
   })
 })
