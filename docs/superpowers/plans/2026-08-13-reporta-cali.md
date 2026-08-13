@@ -88,20 +88,25 @@ Si el asistente pregunta por sobrescribir archivos existentes, responder que no 
 
 ```bash
 npm install drizzle-orm postgres zod lucide-react
-npm install -D drizzle-kit vitest @vitejs/plugin-react vite-tsconfig-paths @testing-library/react @testing-library/jest-dom jsdom @types/pg
+npm install -D drizzle-kit vitest @vitejs/plugin-react @testing-library/react @testing-library/jest-dom jsdom @types/pg
 ```
 
 - [ ] **Step 3: Configurar Vitest**
 
-Crear `vitest.config.ts`:
+Crear `vitest.config.mts` — con extensión `.mts`, no `.ts`: Vite carga los `.ts`
+como CommonJS y emite un aviso en cada corrida, y las restricciones globales
+exigen salida de pruebas limpia. La alternativa, `"type": "module"` en
+`package.json`, afectaría a todo el proyecto.
 
 ```ts
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
-  plugins: [react(), tsconfigPaths()],
+  // Resolución nativa de los alias `@/` de tsconfig: el plugin
+  // vite-tsconfig-paths quedó obsoleto y avisa en cada corrida.
+  resolve: { tsconfigPaths: true },
+  plugins: [react()],
   test: {
     environment: 'jsdom',
     globals: true,
