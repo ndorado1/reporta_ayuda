@@ -1256,10 +1256,30 @@ export async function countEventsSince(opts: {
   citySlug?: string
   sinceId?: string
 }): Promise<number> {
-  const rows = await listEvents({ ...opts, limit: 50 })
-  return rows.length
+  // count(*) real, no `listEvents(...).length`: con el tope de 50, alguien
+  // que vuelve tras muchas horas vería "50" habiendo 200 avisos nuevos.
+  // Un tope que el usuario no ve es un contador que miente.
+  const [row] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(events)
+    .where(await buildEventFilter(opts))
+  return row?.total ?? 0
 }
 ```
+
+**Tres reglas que el feed debe cumplir, y que las pruebas deben demostrar:**
+
+1. `created_at` usa `defaultNow()`, y en Postgres `now()` devuelve el instante
+   de inicio de la **transacción**. `requests.ts` y `claims.ts` insertan sus
+   eventos dentro de transacciones, así que dos eventos pueden compartir marca
+   de tiempo de forma determinista. Por eso el orden es
+   `ORDER BY created_at DESC, id DESC` y el corte del `sinceId` compara la
+   tupla `(created_at, id)`, no solo la fecha.
+2. Si el `sinceId` no existe en la tabla, **se ignora el filtro y se cuenta
+   todo**. Ese identificador llega del `localStorage` del navegador; si el
+   evento se purgó o el valor se desincronizó, tratarlo como "sin novedades"
+   apagaría la campanita de esa persona para siempre y sin error visible.
+3. El payload nunca incluye el número de WhatsApp de nadie.
 
 - [ ] **Step 4: Ejecutar y confirmar que pasa**
 
