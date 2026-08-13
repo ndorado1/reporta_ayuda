@@ -646,8 +646,21 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import * as schema from './schema'
 
-const connectionString = process.env.DATABASE_URL
-if (!connectionString) throw new Error('Falta DATABASE_URL')
+// Bajo pruebas apunta a la base de pruebas. Sin esta ramificación, las
+// funciones bajo prueba leerían y escribirían la base de desarrollo aunque
+// el test preparase sus datos en la otra.
+const isTest = process.env.NODE_ENV === 'test'
+const connectionString = isTest
+  ? process.env.TEST_DATABASE_URL
+  : process.env.DATABASE_URL
+
+if (!connectionString) {
+  throw new Error(
+    isTest
+      ? 'Falta TEST_DATABASE_URL: las pruebas no deben caer en la base de desarrollo'
+      : 'Falta DATABASE_URL'
+  )
+}
 
 // max: 10 es suficiente para un VPS pequeño y evita agotar el Postgres.
 const client = postgres(connectionString, { max: 10 })
@@ -738,6 +751,16 @@ import * as schema from '@/db/schema'
 
 const url = process.env.TEST_DATABASE_URL
 if (!url) throw new Error('Falta TEST_DATABASE_URL')
+
+// Salvaguarda: resetTestDb trunca todas las tablas. Si una variable mal
+// puesta apuntara a la base de desarrollo — o algún día a la de producción —
+// borraría datos de personas damnificadas sin aviso.
+const dbName = new URL(url).pathname.slice(1)
+if (!dbName.endsWith('_test')) {
+  throw new Error(
+    `Rechazo usar "${dbName}" como base de pruebas: su nombre debe terminar en _test`
+  )
+}
 
 const client = postgres(url, { max: 1 })
 export const testDb = drizzle(client, { schema })
