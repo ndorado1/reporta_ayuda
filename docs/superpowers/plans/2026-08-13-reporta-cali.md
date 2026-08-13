@@ -2664,11 +2664,31 @@ Expected: FAIL — no existe `./request-ip`.
 Crear `src/lib/request-ip.ts`:
 
 ```ts
-/** nginx antepone la IP real en x-forwarded-for; la primera es la del cliente. */
+/**
+ * La IP de confianza es la que escribe nuestro proxy, no la que manda el
+ * cliente.
+ *
+ * `x-real-ip` la fija nginx con `proxy_set_header X-Real-IP $remote_addr`,
+ * que SOBRESCRIBE cualquier valor enviado por el cliente: no es falsificable.
+ *
+ * `x-forwarded-for` sí lo es: con `$proxy_add_x_forwarded_for`, nginx AÑADE
+ * la IP real al final de lo que el cliente mandó. Leer el primer valor
+ * dejaría que un bot eligiera su propia identidad en cada petición, con un
+ * hash distinto cada vez, y el límite del endpoint de contacto no saltaría
+ * nunca — es decir, cualquiera podría recolectar los números de todas las
+ * personas que pidieron ayuda. Por eso se lee el ÚLTIMO valor, no el primero.
+ */
 export function getClientIp(headers: Headers): string {
+  const realIp = headers.get('x-real-ip')?.trim()
+  if (realIp) return realIp
+
   const forwarded = headers.get('x-forwarded-for')
-  if (forwarded) return forwarded.split(',')[0].trim()
-  return headers.get('x-real-ip')?.trim() || '0.0.0.0'
+  if (forwarded) {
+    const hops = forwarded.split(',').map((h) => h.trim()).filter(Boolean)
+    if (hops.length) return hops[hops.length - 1]
+  }
+
+  return '0.0.0.0'
 }
 ```
 
@@ -6357,8 +6377,12 @@ server {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
-        # Sin esto, todas las peticiones parecerían venir de 127.0.0.1
-        # y el límite por IP no distinguiría a nadie.
+        # X-Real-IP es la fuente de verdad del límite de tasa. nginx la
+        # SOBRESCRIBE con la IP real de conexión, así que el cliente no
+        # puede falsificarla. Si se quita esta línea, la aplicación cae a
+        # X-Forwarded-For y un bot podría elegir su propia identidad en
+        # cada petición, evadiendo el límite que protege los números de
+        # teléfono de las personas que pidieron ayuda. No la quites.
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
