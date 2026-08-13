@@ -1746,7 +1746,13 @@ export async function claimRequest(
   const claimToken = generateToken()
   const expiresAt = new Date(Date.now() + CLAIM_HOURS * 3600_000)
 
-  await db.transaction(async (tx) => {
+  // El chequeo de estado de arriba no basta: entre leerlo e insertar, otro
+  // voluntario puede haber reclamado la misma solicitud. El índice único
+  // parcial lo impide en la base, pero su violación llegaría al usuario como
+  // una excepción cruda de Postgres. Se traduce por código de error (23505),
+  // no por texto, que cambia entre versiones.
+  try {
+    await db.transaction(async (tx) => {
     await tx.insert(claims).values({
       requestId: request.id,
       volunteerName: name,
@@ -1765,8 +1771,14 @@ export async function claimRequest(
       requestId: request.id,
       cityId: request.cityId,
       payload: { title: request.title, neighborhood: request.neighborhood, city: found.cityName },
+      })
     })
-  })
+  } catch (error) {
+    if ((error as { code?: string })?.code === '23505') {
+      throw new Error('Esta solicitud ya está siendo atendida')
+    }
+    throw error
+  }
 
   return { claimToken }
 }
@@ -1795,25 +1807,32 @@ export async function cancelClaim(publicCode: string, claimToken: string): Promi
  * listado, así la reapertura no depende de un cron. Idempotente por diseño.
  */
 export async function expireStaleClaims(): Promise<number> {
-  const expired = await db
-    .update(claims)
-    .set({ status: 'vencido' })
-    .where(and(eq(claims.status, 'activo'), lt(claims.expiresAt, new Date())))
-    .returning({ requestId: claims.requestId })
+  // Las dos escrituras van en una transacción. Si el proceso muriera entre
+  // ellas, el claim quedaría `vencido` y la solicitud pegada en
+  // `en_atencion` sin claim activo: el filtro `status = 'activo'` ya no la
+  // encontraría en ninguna corrida futura y la necesidad quedaría enterrada
+  // para siempre, que es justo lo que esta función existe para evitar.
+  return db.transaction(async (tx) => {
+    const expired = await tx
+      .update(claims)
+      .set({ status: 'vencido' })
+      .where(and(eq(claims.status, 'activo'), lt(claims.expiresAt, new Date())))
+      .returning({ requestId: claims.requestId })
 
-  if (expired.length === 0) return 0
+    if (expired.length === 0) return 0
 
-  const ids = expired.map((e) => e.requestId)
-  // Solo reabre lo que sigue en atención: si ya la marcaron atendida, no se toca.
-  await db
-    .update(requests)
-    .set({ status: 'abierta', updatedAt: new Date() })
-    .where(and(
-      eq(requests.status, 'en_atencion'),
-      sql`${requests.id} in ${ids}`
-    ))
+    const ids = expired.map((e) => e.requestId)
+    // Solo reabre lo que sigue en atención: si ya la marcaron atendida, no se toca.
+    await tx
+      .update(requests)
+      .set({ status: 'abierta', updatedAt: new Date() })
+      .where(and(
+        eq(requests.status, 'en_atencion'),
+        sql`${requests.id} in ${ids}`
+      ))
 
-  return expired.length
+    return expired.length
+  })
 }
 ```
 
