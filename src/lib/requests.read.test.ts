@@ -107,6 +107,20 @@ describe('listRequests', () => {
     expect(list[0].distanceKm).toBeLessThan(list[1].distanceKm!)
   })
 
+  it('ordena por cercanía en la base, no solo en memoria, cuando hay más solicitudes que el límite', async () => {
+    await seedTestCity()
+    const near = { lat: 3.44, lng: -76.52 }
+    await createRequest(input({ title: 'Cercana pero antigua', lat: 3.441, lng: -76.521 }), '1.1.1.1')
+    await createRequest(input({ title: 'Lejana reciente 1', lat: 3.50, lng: -76.60 }), '1.1.1.1')
+    await createRequest(input({ title: 'Lejana reciente 2', lat: 3.55, lng: -76.65 }), '1.1.1.1')
+    await createRequest(input({ title: 'Lejana reciente 3', lat: 3.60, lng: -76.70 }), '1.1.1.1')
+
+    // El límite es menor que el total: si el LIMIT se aplicara antes de
+    // ordenar por distancia, la cercana-pero-antigua quedaría descartada.
+    const list = await listRequests({ near, limit: 2 })
+    expect(list[0].title).toBe('Cercana pero antigua')
+  })
+
   it('oculta lo que la moderación escondió', async () => {
     await seedTestCity()
     const a = await createRequest(input(), '1.1.1.1')

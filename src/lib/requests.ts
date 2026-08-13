@@ -4,7 +4,7 @@ import { cities, claims, events, requestItems, requests } from '@/db/schema'
 import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import { generatePublicCode, generateToken, hashIp, hashToken, verifyToken } from './tokens'
 import { normalizePhone } from './whatsapp'
-import { distanceKm, isNearCity, type Coords } from './geo'
+import { isNearCity, type Coords } from './geo'
 import { consumeRate } from './ratelimit'
 import { expireStaleClaims } from './claims'
 
@@ -145,6 +145,22 @@ export async function listRequests(filters: ListFilters): Promise<RequestListIte
     )
   }
 
+  // Haversine calculada en SQL (no en memoria): el LIMIT debe recortar las
+  // solicitudes más cercanas, no las más recientes. Sigue sin PostGIS a
+  // propósito; tras filtrar por ciudad y estado el conjunto es pequeño y un
+  // recorrido secuencial es aceptable — lo que no es aceptable es truncar
+  // antes de ordenar por distancia.
+  const near = filters.near
+  const distanceExpr = near
+    ? sql<number>`(
+        2 * 6371 * asin(sqrt(
+          power(sin(radians(${requests.lat} - ${near.lat}) / 2), 2) +
+          cos(radians(${near.lat})) * cos(radians(${requests.lat})) *
+          power(sin(radians(${requests.lng} - ${near.lng}) / 2), 2)
+        ))
+      )`
+    : sql<number | null>`null`
+
   const rows = await db
     .select({
       publicCode: requests.publicCode,
@@ -171,23 +187,18 @@ export async function listRequests(filters: ListFilters): Promise<RequestListIte
         select volunteer_name from ${claims}
         where request_id = ${requests.id} and status = 'activo' limit 1
       )`,
+      distanceKm: distanceExpr,
     })
     .from(requests)
     .innerJoin(cities, eq(requests.cityId, cities.id))
     .where(and(...conditions))
-    .orderBy(desc(requests.createdAt))
+    .orderBy(near ? sql`${distanceExpr} asc` : desc(requests.createdAt))
     .limit(Math.min(filters.limit ?? 200, 200))
 
-  const items = rows as unknown as RequestListItem[]
-
-  if (!filters.near) return items
-
-  return items
-    .map((item) => ({
-      ...item,
-      distanceKm: distanceKm(filters.near!, { lat: item.lat, lng: item.lng }),
-    }))
-    .sort((a, b) => a.distanceKm! - b.distanceKm!)
+  return rows.map((row) => ({
+    ...row,
+    distanceKm: row.distanceKm ?? undefined,
+  })) as unknown as RequestListItem[]
 }
 
 export type RequestDetail = Omit<RequestListItem, 'itemsPreview' | 'distanceKm'> & {
@@ -206,8 +217,28 @@ export async function getRequestByCode(
 ): Promise<RequestDetail | null> {
   await expireStaleClaims()
 
+  // Proyección explícita sin whatsapp ni manageTokenHash: esta consulta
+  // alimenta una vista pública y no debe poder filtrar ninguna de las dos
+  // por un futuro `...row.request` escrito de prisa.
   const [row] = await db
-    .select({ request: requests, cityName: cities.name, citySlug: cities.slug })
+    .select({
+      id: requests.id,
+      publicCode: requests.publicCode,
+      title: requests.title,
+      description: requests.description,
+      urgency: requests.urgency,
+      status: requests.status,
+      neighborhood: requests.neighborhood,
+      addressText: requests.addressText,
+      requesterName: requests.requesterName,
+      peopleCount: requests.peopleCount,
+      lat: requests.lat,
+      lng: requests.lng,
+      createdAt: requests.createdAt,
+      fulfilledAt: requests.fulfilledAt,
+      cityName: cities.name,
+      citySlug: cities.slug,
+    })
     .from(requests)
     .innerJoin(cities, eq(requests.cityId, cities.id))
     .where(and(eq(requests.publicCode, code), eq(requests.isHidden, false)))
@@ -218,83 +249,103 @@ export async function getRequestByCode(
   const items = await db
     .select({ name: requestItems.name, quantity: requestItems.quantity })
     .from(requestItems)
-    .where(eq(requestItems.requestId, row.request.id))
+    .where(eq(requestItems.requestId, row.id))
     .orderBy(requestItems.position)
 
   const [claim] = await db
     .select({ volunteerName: claims.volunteerName })
     .from(claims)
-    .where(and(eq(claims.requestId, row.request.id), eq(claims.status, 'activo')))
+    .where(and(eq(claims.requestId, row.id), eq(claims.status, 'activo')))
     .limit(1)
 
-  const r = row.request
+  // El hash solo se trae si hay token que verificar, y en una consulta
+  // aparte que jamás toca whatsapp.
+  let canManage = false
+  if (manageToken) {
+    const [tokenRow] = await db
+      .select({ manageTokenHash: requests.manageTokenHash })
+      .from(requests)
+      .where(eq(requests.id, row.id))
+      .limit(1)
+    canManage = tokenRow ? verifyToken(manageToken, tokenRow.manageTokenHash) : false
+  }
+
   return {
-    publicCode: r.publicCode,
-    title: r.title,
-    description: r.description,
-    urgency: r.urgency,
-    status: r.status,
-    neighborhood: r.neighborhood,
-    addressText: r.addressText,
-    requesterName: r.requesterName,
-    peopleCount: r.peopleCount,
-    lat: r.lat,
-    lng: r.lng,
+    publicCode: row.publicCode,
+    title: row.title,
+    description: row.description,
+    urgency: row.urgency,
+    status: row.status,
+    neighborhood: row.neighborhood,
+    addressText: row.addressText,
+    requesterName: row.requesterName,
+    peopleCount: row.peopleCount,
+    lat: row.lat,
+    lng: row.lng,
     cityName: row.cityName,
     citySlug: row.citySlug,
     items,
     itemCount: items.length,
     claimedBy: claim?.volunteerName ?? null,
-    createdAt: r.createdAt,
-    fulfilledAt: r.fulfilledAt,
-    canManage: manageToken ? verifyToken(manageToken, r.manageTokenHash) : false,
+    createdAt: row.createdAt,
+    fulfilledAt: row.fulfilledAt,
+    canManage,
   }
 }
 
 async function requireOwner(code: string, manageToken: string) {
+  // Proyección explícita: manageTokenHash se necesita para verificar, pero
+  // whatsapp no tiene por qué pasar por aquí.
   const [row] = await db
-    .select({ request: requests, cityName: cities.name })
+    .select({
+      id: requests.id,
+      cityId: requests.cityId,
+      title: requests.title,
+      neighborhood: requests.neighborhood,
+      manageTokenHash: requests.manageTokenHash,
+      cityName: cities.name,
+    })
     .from(requests)
     .innerJoin(cities, eq(requests.cityId, cities.id))
     .where(eq(requests.publicCode, code))
     .limit(1)
 
   if (!row) throw new Error('Esta solicitud no existe')
-  if (!verifyToken(manageToken, row.request.manageTokenHash)) throw new Error('No autorizado')
+  if (!verifyToken(manageToken, row.manageTokenHash)) throw new Error('No autorizado')
   return row
 }
 
 export async function fulfillRequest(code: string, manageToken: string): Promise<void> {
-  const { request, cityName } = await requireOwner(code, manageToken)
+  const owner = await requireOwner(code, manageToken)
 
   await db.transaction(async (tx) => {
     await tx.update(requests)
       .set({ status: 'atendida', fulfilledAt: new Date(), updatedAt: new Date() })
-      .where(eq(requests.id, request.id))
+      .where(eq(requests.id, owner.id))
 
     await tx.update(claims)
       .set({ status: 'completado' })
-      .where(and(eq(claims.requestId, request.id), eq(claims.status, 'activo')))
+      .where(and(eq(claims.requestId, owner.id), eq(claims.status, 'activo')))
 
     await tx.insert(events).values({
       type: 'request_fulfilled',
-      requestId: request.id,
-      cityId: request.cityId,
-      payload: { title: request.title, neighborhood: request.neighborhood, city: cityName },
+      requestId: owner.id,
+      cityId: owner.cityId,
+      payload: { title: owner.title, neighborhood: owner.neighborhood, city: owner.cityName },
     })
   })
 }
 
 export async function cancelRequest(code: string, manageToken: string): Promise<void> {
-  const { request } = await requireOwner(code, manageToken)
+  const owner = await requireOwner(code, manageToken)
 
   await db.transaction(async (tx) => {
     await tx.update(requests)
       .set({ status: 'cancelada', updatedAt: new Date() })
-      .where(eq(requests.id, request.id))
+      .where(eq(requests.id, owner.id))
     await tx.update(claims)
       .set({ status: 'cancelado' })
-      .where(and(eq(claims.requestId, request.id), eq(claims.status, 'activo')))
+      .where(and(eq(claims.requestId, owner.id), eq(claims.status, 'activo')))
   })
 }
 
