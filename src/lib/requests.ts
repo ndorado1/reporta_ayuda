@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { db } from '@/db'
 import { cities, claims, events, reports, requestItems, requests } from '@/db/schema'
-import { and, count, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, ilike, inArray, ne, notInArray, or, sql } from 'drizzle-orm'
 import { generatePublicCode, generateToken, hashIp, hashToken, verifyToken } from './tokens'
 import { normalizePhone } from './whatsapp'
 import { isNearCity, type Coords } from './geo'
@@ -154,10 +154,28 @@ export type RequestListResult = {
   total: number
 }
 
-export async function listRequests(filters: ListFilters): Promise<RequestListResult> {
-  // Reabre lo abandonado antes de responder: la spec no usa cron para esto.
-  await expireStaleClaims()
+/** Filtros del mapa: los mismos que el listado, sin paginación ni cercanía. */
+export type MapFilters = Pick<ListFilters, 'citySlug' | 'statuses' | 'urgency' | 'search'>
 
+export type MapRequestItem = {
+  publicCode: string
+  title: string
+  urgency: Urgency
+  neighborhood: string | null
+  lat: number
+  lng: number
+}
+
+// El mapa es la vía principal del voluntario (ver spec) y no se pagina: un
+// mapa que solo muestra la primera página esconde justo lo más antiguo, lo
+// que lleva más tiempo esperando. En su lugar trae hasta MAP_LIMIT filas de
+// una vez, con una proyección liviana (sin ítems, sin claimedBy, sin
+// distancia) — a este volumen es barato, y 2.000 da margen de sobra sobre
+// las ~900 solicitudes actuales.
+export const MAP_LIMIT = 2000
+
+/** Condiciones comunes a listRequests y listRequestsForMap. */
+function buildListConditions(filters: MapFilters) {
   const statuses = filters.statuses?.length ? filters.statuses : VISIBLE_BY_DEFAULT
   const conditions = [eq(requests.isHidden, false), inArray(requests.status, statuses)]
 
@@ -169,6 +187,14 @@ export async function listRequests(filters: ListFilters): Promise<RequestListRes
       or(ilike(requests.title, term), ilike(requests.neighborhood, term)) as never
     )
   }
+  return conditions
+}
+
+export async function listRequests(filters: ListFilters): Promise<RequestListResult> {
+  // Reabre lo abandonado antes de responder: la spec no usa cron para esto.
+  await expireStaleClaims()
+
+  const conditions = buildListConditions(filters)
 
   const page = Math.max(1, Math.trunc(filters.page ?? 1))
   const limit = Math.min(Math.max(1, Math.trunc(filters.limit ?? PAGE_SIZE)), PAGE_SIZE)
@@ -221,7 +247,16 @@ export async function listRequests(filters: ListFilters): Promise<RequestListRes
     .from(requests)
     .innerJoin(cities, eq(requests.cityId, cities.id))
     .where(and(...conditions))
-    .orderBy(near ? sql`${distanceExpr} asc` : desc(requests.createdAt))
+    // Desempate por id: sin él, dos filas con el mismo createdAt (o, con
+    // orden por cercanía, la misma distancia — los empates entre floats son
+    // más fáciles) no tienen un orden total garantizado entre dos ejecuciones
+    // distintas de la consulta. Con OFFSET/LIMIT paginando, eso puede
+    // devolver una fila en ambas páginas o en ninguna. Mismo desempate que ya
+    // usa src/lib/events.ts:48 para el mismo problema.
+    .orderBy(
+      near ? sql`${distanceExpr} asc` : desc(requests.createdAt),
+      desc(requests.id)
+    )
     .limit(limit)
     .offset(offset)
 
@@ -241,6 +276,36 @@ export async function listRequests(filters: ListFilters): Promise<RequestListRes
     })) as unknown as RequestListItem[],
     total,
   }
+}
+
+/**
+ * Todas las solicitudes que caben en el mapa a la vez, sin paginar. Misma
+ * proyección mínima que necesita `RequestMap`: nada de ítems, nada de
+ * `claimedBy`, nada de distancia. Los controles de paginación siguen
+ * existiendo, pero solo para la vista de lista — pasear un mapa página por
+ * página es mala interacción para quien busca dónde ayudar.
+ */
+export async function listRequestsForMap(filters: MapFilters): Promise<MapRequestItem[]> {
+  await expireStaleClaims()
+
+  const conditions = buildListConditions(filters)
+
+  const rows = await db
+    .select({
+      publicCode: requests.publicCode,
+      title: requests.title,
+      urgency: requests.urgency,
+      neighborhood: requests.neighborhood,
+      lat: requests.lat,
+      lng: requests.lng,
+    })
+    .from(requests)
+    .innerJoin(cities, eq(requests.cityId, cities.id))
+    .where(and(...conditions))
+    .orderBy(desc(requests.createdAt), desc(requests.id))
+    .limit(MAP_LIMIT)
+
+  return rows
 }
 
 export type RequestDetail = Omit<RequestListItem, 'itemsPreview' | 'distanceKm'> & {
@@ -485,7 +550,17 @@ export async function getContactPhone(
   const [row] = await db
     .select({ phone: requests.whatsapp, title: requests.title })
     .from(requests)
-    .where(and(eq(requests.publicCode, code), eq(requests.isHidden, false)))
+    .where(and(
+      eq(requests.publicCode, code),
+      eq(requests.isHidden, false),
+      // Una archivada nunca anonimiza el teléfono (solo cancelar y el
+      // mantenimiento de 60 días lo hacen), así que sin este filtro el botón
+      // de WhatsApp seguía funcionando para cualquiera que llegara al listado
+      // navegable de `?estado=archivada`. `cancelada` ya queda cubierta
+      // porque cancelar pone `whatsapp` en null, pero se excluye igual para
+      // que esta función no dependa de ese efecto secundario.
+      notInArray(requests.status, ['archivada', 'cancelada'])
+    ))
     .limit(1)
 
   if (!row?.phone) return null

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { testDb, resetTestDb, seedTestCity } from '@/test/db'
 import { cities, requests } from '@/db/schema'
-import { createRequest, listRequests, getRequestByCode, fulfillRequest, cancelRequest, getContactPhone, PAGE_SIZE } from './requests'
+import { createRequest, listRequests, listRequestsForMap, getRequestByCode, fulfillRequest, cancelRequest, getContactPhone, PAGE_SIZE } from './requests'
 import { claimRequest } from './claims'
 
 beforeAll(() => { process.env.IP_HASH_SECRET = 'secreto-de-prueba' })
@@ -204,6 +204,89 @@ describe('listRequests', () => {
       const { items } = await listRequests({ limit: 1000 })
       expect(items).toHaveLength(PAGE_SIZE)
     })
+
+    // Cubre el contrato general de la paginación cuando hay filas con el
+    // mismo createdAt (mismo problema que motivó el desempate por id en
+    // src/lib/events.ts:48). Aviso honesto: verificado a mano contra este
+    // Postgres, esta prueba NO falla si se quita `desc(requests.id)` del
+    // `orderBy` — el plan de una tabla pequeña sin cambios entre ambas
+    // consultas resulta "accidentalmente" estable. El desempate se mantiene
+    // por ser la práctica correcta y documentada (ORDER BY sin clave única no
+    // garantiza un orden total entre ejecuciones distintas), no porque esta
+    // prueba lo demuestre.
+    it('no repite ni pierde filas al paginar sobre createdAt empatado', async () => {
+      const city = await seedTestCity()
+      const tied = new Date()
+      const n = PAGE_SIZE + 7
+      await testDb.insert(requests).values(
+        Array.from({ length: n }, (_, i) => ({
+          cityId: city.id,
+          publicCode: `TIE${String(i).padStart(4, '0')}`,
+          manageTokenHash: 'h',
+          title: `Empate ${String(i).padStart(3, '0')}`,
+          requesterName: 'Ana',
+          lat: 3.45,
+          lng: -76.53,
+          ipHash: 'i',
+          createdAt: tied,
+        }))
+      )
+
+      const first = await listRequests({ page: 1 })
+      const second = await listRequests({ page: 2 })
+
+      const seen = new Set(first.items.map((i) => i.publicCode))
+      expect(seen.size).toBe(PAGE_SIZE)
+      for (const item of second.items) {
+        expect(seen.has(item.publicCode)).toBe(false)
+        seen.add(item.publicCode)
+      }
+      expect(seen.size).toBe(n)
+    })
+  })
+})
+
+describe('listRequestsForMap', () => {
+  it('trae todas las solicitudes de una vez, sin el límite de PAGE_SIZE de la lista', async () => {
+    const city = await seedTestCity()
+    const n = PAGE_SIZE + 30
+    await testDb.insert(requests).values(
+      Array.from({ length: n }, (_, i) => ({
+        cityId: city.id,
+        publicCode: `MAP${String(i).padStart(4, '0')}`,
+        manageTokenHash: 'h',
+        title: `Solicitud de mapa ${String(i).padStart(3, '0')}`,
+        requesterName: 'Ana',
+        lat: 3.45,
+        lng: -76.53,
+        ipHash: 'i',
+        createdAt: new Date(Date.now() + i * 1000),
+      }))
+    )
+
+    const items = await listRequestsForMap({})
+    expect(items).toHaveLength(n)
+  })
+
+  it('nunca incluye el número de WhatsApp ni otros datos que no necesita el mapa', async () => {
+    await seedTestCity()
+    await createRequest(input(), '1.1.1.1')
+
+    const [item] = await listRequestsForMap({})
+    expect(JSON.stringify(item)).not.toContain('573001234567')
+    expect(item).not.toHaveProperty('whatsapp')
+    expect(item).not.toHaveProperty('itemsPreview')
+  })
+
+  it('respeta los mismos filtros que la lista (ciudad, urgencia, estados visibles por defecto)', async () => {
+    await seedTestCity()
+    const a = await createRequest(input({ urgency: 'alta' }), '1.1.1.1')
+    await createRequest(input({ urgency: 'baja', title: 'Necesitamos ropa seca' }), '1.1.1.1')
+    await fulfillRequest(a.publicCode, a.manageToken)
+
+    const items = await listRequestsForMap({ urgency: 'baja' })
+    expect(items).toHaveLength(1)
+    expect(items[0].title).toBe('Necesitamos ropa seca')
   })
 })
 
@@ -324,6 +407,27 @@ describe('getContactPhone', () => {
     await seedTestCity()
     const a = await createRequest(input(), '1.1.1.1')
     await testDb.update(requests).set({ isHidden: true })
+
+    expect(await getContactPhone(a.publicCode)).toBeNull()
+  })
+
+  // Antes de esta corrección, `?estado=archivada` volvía navegable el
+  // listado de solicitudes archivadas (ver parseStatuses) y el botón de
+  // WhatsApp de esa tarjeta seguía funcionando porque esta consulta no
+  // miraba el estado. Sin el filtro, esta prueba fallaría porque `contact`
+  // no sería null.
+  it('no entrega número de solicitudes archivadas', async () => {
+    await seedTestCity()
+    const a = await createRequest(input(), '1.1.1.1')
+    await testDb.update(requests).set({ status: 'archivada' })
+
+    expect(await getContactPhone(a.publicCode)).toBeNull()
+  })
+
+  it('no entrega número de solicitudes canceladas', async () => {
+    await seedTestCity()
+    const a = await createRequest(input(), '1.1.1.1')
+    await cancelRequest(a.publicCode, a.manageToken)
 
     expect(await getContactPhone(a.publicCode)).toBeNull()
   })

@@ -4,7 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import Link from 'next/link'
 import 'leaflet/dist/leaflet.css'
-import type { RequestListItem } from '@/lib/requests'
+import type { MapRequestItem } from '@/lib/requests'
 
 // Iconos por urgencia: el color no basta, cambia también la letra.
 const ICONS: Record<string, L.DivIcon> = {
@@ -27,7 +27,7 @@ export default function RequestMap({
   center,
   zoom,
 }: {
-  items: RequestListItem[]
+  items: MapRequestItem[]
   center: { lat: number; lng: number }
   zoom: number
 }) {
@@ -50,7 +50,7 @@ export default function RequestMap({
         >
           <Popup>
             <strong className="block text-base">{item.title}</strong>
-            <span className="text-sm">{item.neighborhood ?? item.cityName}</span>
+            {item.neighborhood && <span className="text-sm">{item.neighborhood}</span>}
             <Link href={`/s/${item.publicCode}`} className="mt-2 block font-semibold text-(--color-cta) underline">
               Ver solicitud
             </Link>

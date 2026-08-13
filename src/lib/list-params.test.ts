@@ -18,6 +18,17 @@ describe('parseStatuses', () => {
     expect(parseStatuses('')).toBeUndefined()
     expect(parseStatuses(undefined)).toBeUndefined()
   })
+
+  // `cancelada` y `archivada` sí están en REQUEST_STATUSES (las usa la
+  // moderación), pero no deben poder pedirse desde la URL pública: una
+  // cancelada ya no tiene detalle (404 en su enlace) y una archivada
+  // convertiría el propio listado en un directorio navegable de solicitudes
+  // que antes solo eran alcanzables por su código. Sin esta exclusión, esta
+  // prueba fallaría porque devolvería ['cancelada']/['archivada'].
+  it('ignora "cancelada" y "archivada" aunque sean estados válidos del enum', () => {
+    expect(parseStatuses('cancelada')).toBeUndefined()
+    expect(parseStatuses('archivada')).toBeUndefined()
+  })
 })
 
 describe('parseUrgency', () => {

@@ -14,8 +14,18 @@ export function parseUrgency(value?: string): Urgency | undefined {
   return value && (URGENCIES as string[]).includes(value) ? (value as Urgency) : undefined
 }
 
+// `cancelada` y `archivada` quedan fuera aunque están en el enum: una
+// cancelada ya no tiene página de detalle (getRequestByCode la excluye), así
+// que `?estado=cancelada` mostraría tarjetas cuyo enlace da 404. Una
+// archivada sí tiene detalle y número de contacto activos, así que
+// `?estado=archivada` convertiría la propia interfaz en un listado navegable
+// de solicitudes que antes solo eran alcanzables conociendo el código.
+const LISTABLE_STATUSES: RequestStatus[] = REQUEST_STATUSES.filter(
+  (s) => s !== 'cancelada' && s !== 'archivada'
+)
+
 export function parseStatuses(value?: string): RequestStatus[] | undefined {
-  return value && (REQUEST_STATUSES as string[]).includes(value) ? [value as RequestStatus] : undefined
+  return value && (LISTABLE_STATUSES as string[]).includes(value) ? [value as RequestStatus] : undefined
 }
 
 /** Página de 1 en adelante. Cualquier valor que no sea un entero positivo cae a 1. */
