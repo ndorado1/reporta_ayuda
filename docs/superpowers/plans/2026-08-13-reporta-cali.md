@@ -2324,12 +2324,33 @@ export async function fulfillRequest(code: string, manageToken: string): Promise
   })
 }
 
+/**
+ * Cancelar anonimiza en el acto, no solo cambia el estado.
+ *
+ * La política de datos dice que al cancelar los datos desaparecen sin
+ * esperar ningún plazo, y quien pulsa ese botón suele ser alguien que está
+ * recibiendo llamadas indeseadas o se arrepintió de publicar dónde vive.
+ * Dejar su nombre, su teléfono y su dirección otros 60 días convertiría esa
+ * frase en mentira.
+ *
+ * Marcar como atendida NO anonimiza: quien recibió la ayuda no está pidiendo
+ * un borrado, y su solicitud sigue el plazo normal.
+ */
 export async function cancelRequest(code: string, manageToken: string): Promise<void> {
   const { request } = await requireOwner(code, manageToken)
 
   await db.transaction(async (tx) => {
     await tx.update(requests)
-      .set({ status: 'cancelada', updatedAt: new Date() })
+      .set({
+        status: 'cancelada',
+        requesterName: 'Anónimo',
+        whatsapp: null,
+        addressText: null,
+        lat: sql`round(${requests.lat}::numeric, 2)::double precision`,
+        lng: sql`round(${requests.lng}::numeric, 2)::double precision`,
+        anonymizedAt: new Date(),
+        updatedAt: new Date(),
+      })
       .where(eq(requests.id, request.id))
     await tx.update(claims)
       .set({ status: 'cancelado' })
