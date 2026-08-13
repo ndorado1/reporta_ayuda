@@ -340,8 +340,23 @@ export async function cancelRequest(code: string, manageToken: string): Promise<
   const owner = await requireOwner(code, manageToken)
 
   await db.transaction(async (tx) => {
+    // Cancelar es la vía de borrado que promete el aviso de privacidad:
+    // "desaparece de inmediato", sin esperar los 60 días del mantenimiento
+    // (ver anonymizeOldRequests en maintenance.ts, que hace exactamente esto
+    // por plazo). Solo aplica aquí, no al marcar como atendida: quien recibió
+    // ayuda no está pidiendo que se borren sus datos.
     await tx.update(requests)
-      .set({ status: 'cancelada', updatedAt: new Date() })
+      .set({
+        status: 'cancelada',
+        updatedAt: new Date(),
+        requesterName: 'Anónimo',
+        whatsapp: null,
+        addressText: null,
+        // Redondea a ~1 km para que no se pueda ubicar la vivienda.
+        lat: sql`round(${requests.lat}::numeric, 2)::double precision`,
+        lng: sql`round(${requests.lng}::numeric, 2)::double precision`,
+        anonymizedAt: new Date(),
+      })
       .where(eq(requests.id, owner.id))
     await tx.update(claims)
       .set({ status: 'cancelado' })

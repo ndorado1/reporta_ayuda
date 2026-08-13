@@ -200,6 +200,28 @@ describe('cierre de solicitudes', () => {
     expect(row.status).toBe('cancelada')
   })
 
+  it('anonimiza de inmediato al cancelar, como promete el aviso de privacidad', async () => {
+    await seedTestCity()
+    const a = await createRequest(input(), '1.1.1.1')
+    await cancelRequest(a.publicCode, a.manageToken)
+
+    const [row] = await testDb.select().from(requests)
+    expect(row.whatsapp).toBeNull()
+    expect(row.requesterName).not.toBe('Ana Ruiz')
+    expect(row.anonymizedAt).not.toBeNull()
+    expect(row.neighborhood).toBe('El Diamante')
+  })
+
+  it('no anonimiza al marcar como atendida: ese caso sigue el plazo de 60 días', async () => {
+    await seedTestCity()
+    const a = await createRequest(input(), '1.1.1.1')
+    await fulfillRequest(a.publicCode, a.manageToken)
+
+    const [row] = await testDb.select().from(requests)
+    expect(row.whatsapp).toBe('+573001234567')
+    expect(row.anonymizedAt).toBeNull()
+  })
+
   it('cierra también el claim activo al marcar atendida', async () => {
     await seedTestCity()
     const a = await createRequest(input(), '1.1.1.1')
