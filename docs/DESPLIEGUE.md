@@ -116,9 +116,14 @@ reintentar.
 
 ### Comprobación de seguridad obligatoria
 
-No continuar al siguiente paso sin correr estos dos comandos. Verifican las
-dos protecciones de las que depende el límite de tasa que protege los
-números de teléfono de las personas que pidieron ayuda:
+No continuar al siguiente paso sin correr estos tres comandos. Verifican las
+protecciones de las que depende el límite de tasa que protege los números de
+teléfono de las personas que pidieron ayuda.
+
+Si alguna falla, cualquiera podría recolectar esos teléfonos enviando una
+cabecera distinta en cada petición. Es exactamente el material con el que
+operan las campañas de estafa tras cada desastre, así que estas
+comprobaciones no son opcionales:
 
 ```bash
 sudo ss -tlnp | grep 3000
@@ -139,6 +144,20 @@ La salida debe incluir la línea
 configuración de nginx que se instaló no es `nginx/reporta-cali.conf` o fue
 editada sin esa línea: volver a copiarla desde el repositorio y repetir
 `sudo nginx -t && sudo systemctl reload nginx`.
+
+Los dos comandos anteriores comprueban la configuración. Este comprueba el
+resultado, que es lo que de verdad importa. **Ejecutarlo desde otra máquina**,
+no desde el servidor, sustituyendo por la IP pública del VPS:
+
+```bash
+curl -m 5 -s -o /dev/null -w '%{http_code}\n' http://IP_DEL_SERVIDOR:3000/
+```
+
+Debe fallar por tiempo de espera o conexión rechazada, sin devolver ningún
+código de respuesta. Si devuelve `200`, la aplicación está accesible sin pasar
+por nginx pese a lo que digan los comandos anteriores —normalmente por una
+regla de cortafuegos o por Docker publicando en otra interfaz—, y **hay que
+corregirlo antes de anunciar la plataforma**.
 
 6. Programar el mantenimiento diario:
 
