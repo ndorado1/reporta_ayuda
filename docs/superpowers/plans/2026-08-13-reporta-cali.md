@@ -1445,9 +1445,11 @@ export const createRequestSchema = z.object({
   addressText: z.string().trim().max(200).optional().or(z.literal('')),
   neighborhood: z.string().trim().max(80).optional().or(z.literal('')),
   peopleCount: z.number().int().min(1).max(999).optional(),
-  acceptsPrivacy: z.literal(true, {
-    errorMap: () => ({ message: 'Debes autorizar el tratamiento de tus datos' }),
-  }),
+  // Zod 4 no admite `z.literal(true, { errorMap })`; además el formulario
+  // envía un booleano, no siempre `true`.
+  acceptsPrivacy: z
+    .boolean()
+    .refine((v) => v === true, { message: 'Debes autorizar el tratamiento de tus datos' }),
   // Campo trampa: las personas lo dejan vacío, los bots lo llenan.
   website: z.string().max(0, 'Envío rechazado').optional().or(z.literal('')),
 })
@@ -2384,6 +2386,14 @@ describe('anonymizeOldRequests', () => {
     await anonymizeOldRequests()
     expect(await anonymizeOldRequests()).toBe(0)
   })
+
+  it('mide desde el cierre, no desde la última edición', async () => {
+    // Cerrada hace 61 días pero editada hace 2: debe anonimizarse igual.
+    // Con `updatedAt` como referencia, el reloj se reiniciaría y la
+    // plataforma incumpliría su propia política de datos en silencio.
+    await makeRequest({ status: 'atendida', fulfilledAt: daysAgo(61), updatedAt: daysAgo(2) })
+    expect(await anonymizeOldRequests()).toBe(1)
+  })
 })
 
 describe('archiveStaleRequests', () => {
@@ -2462,7 +2472,15 @@ export async function anonymizeOldRequests(): Promise<number> {
     })
     .where(and(
       inArray(requests.status, ['atendida', 'cancelada']),
-      lt(requests.updatedAt, daysAgo(ANONYMIZE_AFTER_DAYS)),
+      // Se mide desde el cierre real, no desde la última modificación:
+      // `updatedAt` avanza con cualquier edición posterior y reiniciaría el
+      // reloj, retrasando la anonimización más allá del plazo que la
+      // política de datos promete. Las atendidas tienen `fulfilledAt`; las
+      // canceladas caen a `updatedAt`, que en su caso es el cierre.
+      lt(
+        sql`coalesce(${requests.fulfilledAt}, ${requests.updatedAt})`,
+        daysAgo(ANONYMIZE_AFTER_DAYS)
+      ),
       isNull(requests.anonymizedAt)
     ))
     .returning({ id: requests.id })
@@ -6514,6 +6532,13 @@ export async function updateRequest(
 ): Promise<void> {
   const patch = updateRequestSchema.parse(raw)
   const { request } = await requireOwner(code, manageToken)
+
+  // Una solicitud cerrada no se edita. Además de no tener sentido para el
+  // usuario, editarla movería `updatedAt` y alteraría el reloj de
+  // anonimización que la política de datos promete cumplir.
+  if (request.status !== 'abierta' && request.status !== 'en_atencion') {
+    throw new Error('Esta solicitud ya está cerrada y no se puede editar')
+  }
 
   await db.transaction(async (tx) => {
     await tx.update(requests).set({
