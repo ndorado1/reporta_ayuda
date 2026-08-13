@@ -15,7 +15,9 @@ export function SiteHeader({ cities }: { cities: City[] }) {
         <Suspense fallback={null}>
           <CitySelect cities={cities} />
         </Suspense>
-        <NotificationBell />
+        <Suspense fallback={null}>
+          <NotificationBell />
+        </Suspense>
       </div>
     </header>
   )
