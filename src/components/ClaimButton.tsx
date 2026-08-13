@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Truck } from 'lucide-react'
 import { Button } from './ui/Button'
 import { claimAction } from '@/app/actions'
@@ -68,6 +69,10 @@ export function ClaimButton({ code }: { code: string }) {
         autoComplete="name"
         className="mt-1 min-h-[44px] w-full rounded-lg border border-(--color-line) px-3 text-base"
       />
+      <p className="mt-1 text-xs text-(--color-muted)">
+        Tu nombre se mostrará públicamente en esta solicitud. Consulta la{' '}
+        <Link href="/privacidad" className="underline">política de datos</Link>.
+      </p>
       {error && <p role="alert" className="mt-2 text-sm font-medium text-(--color-urgente)">{error}</p>}
       <div className="mt-3 flex gap-2">
         <Button onClick={submit} disabled={saving || name.trim().length < 2} className="flex-1">

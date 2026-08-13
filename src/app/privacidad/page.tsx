@@ -56,6 +56,16 @@ export default function PrivacyPage() {
       </section>
 
       <section className="space-y-2">
+        <h2 className="text-lg font-bold text-(--color-primary)">Si te ofreces a ayudar</h2>
+        <p className="text-(--color-secondary)">
+          Al pulsar &ldquo;Voy en camino&rdquo; pedimos tu nombre, que se muestra en público
+          en esa solicitud (&ldquo;Luis Pérez va en camino&rdquo;) para que quien pidió ayuda
+          sepa quién llega. Igual que con los datos de quien pide ayuda, ese nombre se
+          anonimiza automáticamente dos meses después de que la solicitud quede cerrada.
+        </p>
+      </section>
+
+      <section className="space-y-2">
         <h2 className="text-lg font-bold text-(--color-primary)">Cómo borrar tu solicitud</h2>
         <p className="text-(--color-secondary)">
           Cuando publicas, te damos un enlace privado. Ábrelo y usa el botón

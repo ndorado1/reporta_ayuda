@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
 import { testDb, resetTestDb, seedTestCity } from '@/test/db'
-import { requests } from '@/db/schema'
+import { requests, claims } from '@/db/schema'
 import { eq } from 'drizzle-orm'
 import { runMaintenance, anonymizeOldRequests, archiveStaleRequests } from './maintenance'
 
@@ -66,6 +66,44 @@ describe('anonymizeOldRequests', () => {
     // el corte de 60 días debe mirar fulfilledAt, no dejarse engañar por updatedAt.
     await makeRequest({ status: 'atendida', fulfilledAt: daysAgo(61), updatedAt: daysAgo(2) })
     expect(await anonymizeOldRequests()).toBe(1)
+  })
+
+  // El voluntario tiene el mismo derecho al olvido que quien pidió ayuda
+  // (Ley 1581 de 2012). Sin esto, `claims.volunteerName` quedaba en la base
+  // para siempre, incluso después de anonimizar la solicitud a la que
+  // pertenece.
+  it('anonimiza también el nombre del voluntario en los claims asociados', async () => {
+    const row = await makeRequest({ status: 'atendida', fulfilledAt: daysAgo(61), updatedAt: daysAgo(61) })
+    await testDb.insert(claims).values({
+      requestId: row.id,
+      volunteerName: 'Luis Pérez',
+      claimTokenHash: 'h',
+      status: 'completado',
+      ipHash: 'i',
+      expiresAt: daysAgo(-1),
+    })
+
+    await anonymizeOldRequests()
+
+    const [claim] = await testDb.select().from(claims).where(eq(claims.requestId, row.id))
+    expect(claim.volunteerName).toBe('Anónimo')
+  })
+
+  it('no toca el nombre del voluntario de un claim cuya solicitud no se anonimiza todavía', async () => {
+    const row = await makeRequest({ status: 'atendida', fulfilledAt: daysAgo(10), updatedAt: daysAgo(10) })
+    await testDb.insert(claims).values({
+      requestId: row.id,
+      volunteerName: 'Luis Pérez',
+      claimTokenHash: 'h',
+      status: 'completado',
+      ipHash: 'i',
+      expiresAt: daysAgo(-1),
+    })
+
+    await anonymizeOldRequests()
+
+    const [claim] = await testDb.select().from(claims).where(eq(claims.requestId, row.id))
+    expect(claim.volunteerName).toBe('Luis Pérez')
   })
 })
 
