@@ -10,5 +10,12 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    // Las pruebas de integración comparten una sola base de datos de
+    // pruebas y cada una llama a resetTestDb(), que hace TRUNCATE de
+    // todas las tablas. Con archivos en paralelo, uno trunca la base
+    // mientras otro está a mitad de sus inserciones. Se desactiva el
+    // paralelismo entre archivos hasta que cada suite tenga su propia
+    // base de datos.
+    fileParallelism: false,
   },
 })
