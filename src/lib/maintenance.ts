@@ -26,7 +26,12 @@ export async function anonymizeOldRequests(): Promise<number> {
     })
     .where(and(
       inArray(requests.status, ['atendida', 'cancelada']),
-      lt(requests.updatedAt, daysAgo(ANONYMIZE_AFTER_DAYS)),
+      // El corte cuenta desde el cierre real (fulfilledAt), no desde updatedAt:
+      // una edición posterior (moderación, corrección de un ítem) no puede
+      // reiniciar el plazo que la política de datos promete a los damnificados.
+      // cancelada no fija fulfilledAt, así que cae a updatedAt, que en ese caso
+      // sí es el momento del cierre.
+      sql`coalesce(${requests.fulfilledAt}, ${requests.updatedAt}) < ${daysAgo(ANONYMIZE_AFTER_DAYS).toISOString()}::timestamptz`,
       isNull(requests.anonymizedAt)
     ))
     .returning({ id: requests.id })

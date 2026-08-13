@@ -58,6 +58,13 @@ describe('anonymizeOldRequests', () => {
     await anonymizeOldRequests()
     expect(await anonymizeOldRequests()).toBe(0)
   })
+
+  it('cuenta desde el cierre real, no desde una edición posterior', async () => {
+    // fulfilledAt marca el cierre hace 61 días, pero alguien editó la fila hace 2 días:
+    // el corte de 60 días debe mirar fulfilledAt, no dejarse engañar por updatedAt.
+    await makeRequest({ status: 'atendida', fulfilledAt: daysAgo(61), updatedAt: daysAgo(2) })
+    expect(await anonymizeOldRequests()).toBe(1)
+  })
 })
 
 describe('archiveStaleRequests', () => {
