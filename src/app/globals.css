@@ -60,3 +60,11 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Leaflet asigna z-index altos a sus paneles; los bajamos para que no
+   tapen la cabecera pegajosa ni el botón de "Pedir ayuda". */
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10 !important;
+}

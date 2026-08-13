@@ -3,13 +3,20 @@ import { listRequests, type RequestStatus, type Urgency } from '@/lib/requests'
 import { RequestCard } from '@/components/RequestCard'
 import { RequestFilters } from '@/components/RequestFilters'
 import { EmptyState } from '@/components/EmptyState'
+import { MapListToggle } from '@/components/MapListToggle'
+// Leaflet toca window: nunca en el servidor. Además así no pesa en la
+// carga inicial de quien solo quiere la lista. El `next/dynamic` con
+// `ssr: false` vive dentro de RequestMapLazy (Client Component): Next.js no
+// permite esa opción directamente en un Server Component como esta página.
+import RequestMap from '@/components/RequestMapLazy'
+import { getCityBySlug } from '@/lib/cities'
 
 export const dynamic = 'force-dynamic'
 
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ ciudad?: string; urgencia?: string; estado?: string; buscar?: string }>
+  searchParams: Promise<{ ciudad?: string; urgencia?: string; estado?: string; buscar?: string; vista?: string }>
 }) {
   const params = await searchParams
   const citySlug = params.ciudad && params.ciudad !== 'todas' ? params.ciudad : undefined
@@ -20,6 +27,13 @@ export default async function HomePage({
     statuses: params.estado ? ([params.estado] as RequestStatus[]) : undefined,
     search: params.buscar || undefined,
   })
+
+  const view = params.vista === 'mapa' ? 'mapa' : 'lista'
+  const city = citySlug ? await getCityBySlug(citySlug) : null
+  const center = city
+    ? { lat: city.centerLat, lng: city.centerLng }
+    : { lat: 3.4516, lng: -76.532 } // Cali por defecto
+  const zoom = city?.defaultZoom ?? 8
 
   return (
     <div className="space-y-4">
@@ -41,8 +55,15 @@ export default async function HomePage({
         <RequestFilters />
       </Suspense>
 
+      {/* MapListToggle también usa useSearchParams: misma razón que arriba. */}
+      <Suspense fallback={null}>
+        <MapListToggle current={view} />
+      </Suspense>
+
       {items.length === 0 ? (
         <EmptyState message="Nadie ha publicado una solicitud con estos filtros todavía." />
+      ) : view === 'mapa' ? (
+        <RequestMap items={items} center={center} zoom={zoom} />
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2">
           {items.map((item) => (
