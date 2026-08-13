@@ -123,8 +123,39 @@ export default defineConfig({
 Crear `vitest.setup.ts`:
 
 ```ts
+// Las pruebas de componentes importan, de forma transitiva, Server Actions
+// que inicializan la conexión a la base (RequestCard → ClaimButton →
+// actions.ts → lib/claims → db). Sin cargar aquí las variables de entorno,
+// esas pruebas fallan al importar el módulo aunque no toquen la base, y
+// solo pasarían por casualidad si otra prueba hubiera cargado dotenv antes.
+import 'dotenv/config'
 import '@testing-library/jest-dom/vitest'
+import { vi } from 'vitest'
+
+// Los componentes cliente que usan useRouter o useSearchParams solo
+// funcionan dentro del contexto que monta Next en ejecución. Vitest no lo
+// provee: sin este stub, cualquier prueba que los renderice revienta con
+// "invariant expected app router to be mounted", aunque no verifique nada
+// de navegación. Un archivo de prueba puede sobrescribirlo si necesita
+// parámetros concretos: aquí `useSearchParams` devuelve siempre vacío.
+vi.mock('next/navigation', async () => {
+  const actual = await vi.importActual<typeof import('next/navigation')>('next/navigation')
+  return {
+    ...actual,
+    useRouter: () => ({
+      push: vi.fn(), replace: vi.fn(), refresh: vi.fn(),
+      back: vi.fn(), forward: vi.fn(), prefetch: vi.fn(),
+    }),
+    useSearchParams: () => new URLSearchParams(),
+    usePathname: () => '/',
+  }
+})
 ```
+
+**Regla que aplica a todas las tareas de interfaz:** cualquier componente
+cliente que use `useSearchParams` debe ir envuelto en `<Suspense>` donde se
+consuma, o `next build` falla con "Missing Suspense boundary". Afecta al menos
+a `CitySelect`, `NotificationBell`, `RequestFilters` y `MapListToggle`.
 
 Añadir a `package.json` en `scripts`:
 
@@ -3758,6 +3789,7 @@ export function EmptyState({ message }: { message: string }) {
 Reemplazar `src/app/page.tsx`:
 
 ```tsx
+import { Suspense } from 'react'
 import { listRequests, type RequestStatus, type Urgency } from '@/lib/requests'
 import { RequestCard } from '@/components/RequestCard'
 import { RequestFilters } from '@/components/RequestFilters'
@@ -3793,7 +3825,11 @@ export default async function HomePage({
         </p>
       </div>
 
-      <RequestFilters />
+      {/* `RequestFilters` usa `useSearchParams`: sin esta frontera,
+          `next build` falla con "Missing Suspense boundary". */}
+      <Suspense fallback={null}>
+        <RequestFilters />
+      </Suspense>
 
       {items.length === 0 ? (
         <EmptyState message="Nadie ha publicado una solicitud con estos filtros todavía." />
