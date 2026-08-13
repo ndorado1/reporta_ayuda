@@ -3,6 +3,7 @@ import { db } from '@/db'
 import { cities, claims, events, requests } from '@/db/schema'
 import { generateToken, hashIp, hashToken, verifyToken } from './tokens'
 import { consumeRate } from './ratelimit'
+import { DomainError } from './errors'
 
 export const CLAIM_HOURS = 6
 
@@ -26,7 +27,7 @@ export async function claimRequest(
   ip: string
 ): Promise<{ claimToken: string }> {
   const name = input.volunteerName.trim()
-  if (name.length < 2) throw new Error('Escribe tu nombre para que sepan quién va')
+  if (name.length < 2) throw new DomainError('Escribe tu nombre para que sepan quién va')
 
   await consumeRate(ip, 'create_claim')
 
@@ -36,10 +37,10 @@ export async function claimRequest(
     .innerJoin(cities, eq(requests.cityId, cities.id))
     .where(eq(requests.publicCode, input.publicCode))
     .limit(1)
-  if (!found) throw new Error('Esta solicitud no existe')
+  if (!found) throw new DomainError('Esta solicitud no existe')
   const request = found.request
-  if (request.status === 'en_atencion') throw new Error('Esta solicitud ya está siendo atendida')
-  if (request.status !== 'abierta') throw new Error('Esta solicitud ya no está abierta')
+  if (request.status === 'en_atencion') throw new DomainError('Esta solicitud ya está siendo atendida')
+  if (request.status !== 'abierta') throw new DomainError('Esta solicitud ya no está abierta')
 
   const claimToken = generateToken()
   const expiresAt = new Date(Date.now() + CLAIM_HOURS * 3600_000)
@@ -67,7 +68,7 @@ export async function claimRequest(
       })
     })
   } catch (err) {
-    if (isUniqueViolation(err)) throw new Error('Esta solicitud ya está siendo atendida')
+    if (isUniqueViolation(err)) throw new DomainError('Esta solicitud ya está siendo atendida')
     throw err
   }
 
@@ -82,8 +83,8 @@ export async function cancelClaim(publicCode: string, claimToken: string): Promi
     .where(and(eq(requests.publicCode, publicCode), eq(claims.status, 'activo')))
     .limit(1)
 
-  if (!row) throw new Error('No hay nadie en camino para esta solicitud')
-  if (!verifyToken(claimToken, row.claim.claimTokenHash)) throw new Error('No autorizado')
+  if (!row) throw new DomainError('No hay nadie en camino para esta solicitud')
+  if (!verifyToken(claimToken, row.claim.claimTokenHash)) throw new DomainError('No autorizado')
 
   await db.transaction(async (tx) => {
     await tx.update(claims).set({ status: 'cancelado' }).where(eq(claims.id, row.claim.id))

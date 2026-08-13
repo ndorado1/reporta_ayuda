@@ -1,9 +1,11 @@
 import { Suspense } from 'react'
-import { listRequests, type RequestStatus, type Urgency } from '@/lib/requests'
+import { listRequests, PAGE_SIZE } from '@/lib/requests'
+import { parseUrgency, parseStatuses, parsePage } from '@/lib/list-params'
 import { RequestCard } from '@/components/RequestCard'
 import { RequestFilters } from '@/components/RequestFilters'
 import { EmptyState } from '@/components/EmptyState'
 import { MapListToggle } from '@/components/MapListToggle'
+import { Pagination } from '@/components/Pagination'
 // Leaflet toca window: nunca en el servidor. Además así no pesa en la
 // carga inicial de quien solo quiere la lista. El `next/dynamic` con
 // `ssr: false` vive dentro de RequestMapLazy (Client Component): Next.js no
@@ -16,16 +18,25 @@ export const dynamic = 'force-dynamic'
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ ciudad?: string; urgencia?: string; estado?: string; buscar?: string; vista?: string }>
+  searchParams: Promise<{
+    ciudad?: string
+    urgencia?: string
+    estado?: string
+    buscar?: string
+    vista?: string
+    pagina?: string
+  }>
 }) {
   const params = await searchParams
   const citySlug = params.ciudad && params.ciudad !== 'todas' ? params.ciudad : undefined
+  const page = parsePage(params.pagina)
 
-  const items = await listRequests({
+  const { items, total } = await listRequests({
     citySlug,
-    urgency: params.urgencia as Urgency | undefined,
-    statuses: params.estado ? ([params.estado] as RequestStatus[]) : undefined,
+    urgency: parseUrgency(params.urgencia),
+    statuses: parseStatuses(params.estado),
     search: params.buscar || undefined,
+    page,
   })
 
   const view = params.vista === 'mapa' ? 'mapa' : 'lista'
@@ -34,6 +45,7 @@ export default async function HomePage({
     ? { lat: city.centerLat, lng: city.centerLng }
     : { lat: 3.4516, lng: -76.532 } // Cali por defecto
   const zoom = city?.defaultZoom ?? 8
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
   return (
     <div className="space-y-4">
@@ -42,9 +54,9 @@ export default async function HomePage({
           Solicitudes de ayuda
         </h1>
         <p className="mt-1 text-(--color-muted)">
-          {items.length === 0
+          {total === 0
             ? 'No hay solicitudes con estos filtros.'
-            : `${items.length} ${items.length === 1 ? 'solicitud' : 'solicitudes'}.`}
+            : `${total} ${total === 1 ? 'solicitud' : 'solicitudes'}.`}
         </p>
       </div>
 
@@ -65,13 +77,18 @@ export default async function HomePage({
       ) : view === 'mapa' ? (
         <RequestMap items={items} center={center} zoom={zoom} />
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2">
-          {items.map((item) => (
-            <li key={item.publicCode}>
-              <RequestCard item={item} />
-            </li>
-          ))}
-        </ul>
+        <>
+          <ul className="grid gap-4 sm:grid-cols-2">
+            {items.map((item) => (
+              <li key={item.publicCode}>
+                <RequestCard item={item} />
+              </li>
+            ))}
+          </ul>
+          <Suspense fallback={null}>
+            <Pagination page={page} totalPages={totalPages} />
+          </Suspense>
+        </>
       )}
     </div>
   )

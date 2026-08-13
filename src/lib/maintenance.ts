@@ -19,6 +19,9 @@ export async function anonymizeOldRequests(): Promise<number> {
       requesterName: 'Anónimo',
       whatsapp: null,
       addressText: null,
+      // Igual que en cancelRequest (requests.ts): la descripción es texto
+      // libre y suele contener lo mismo que el resto de datos personales.
+      description: null,
       // Redondea a ~1 km para que no se pueda ubicar la vivienda.
       lat: sql`round(${requests.lat}::numeric, 2)::double precision`,
       lng: sql`round(${requests.lng}::numeric, 2)::double precision`,

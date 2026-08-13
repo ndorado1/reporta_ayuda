@@ -1,12 +1,13 @@
 import { z } from 'zod'
 import { db } from '@/db'
 import { cities, claims, events, reports, requestItems, requests } from '@/db/schema'
-import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, ilike, inArray, ne, or, sql } from 'drizzle-orm'
 import { generatePublicCode, generateToken, hashIp, hashToken, verifyToken } from './tokens'
 import { normalizePhone } from './whatsapp'
 import { isNearCity, type Coords } from './geo'
 import { consumeRate } from './ratelimit'
 import { expireStaleClaims } from './claims'
+import { DomainError } from './errors'
 
 export const createRequestSchema = z.object({
   citySlug: z.string().min(1, 'Elige una ciudad'),
@@ -44,13 +45,13 @@ export async function createRequest(
 
   const [city] = await db.select().from(cities)
     .where(eq(cities.slug, input.citySlug)).limit(1)
-  if (!city || !city.isActive) throw new Error('La ciudad seleccionada no está disponible')
+  if (!city || !city.isActive) throw new DomainError('La ciudad seleccionada no está disponible')
 
   const phone = normalizePhone(input.whatsapp)
-  if (!phone) throw new Error('El número debe ser un celular colombiano de diez dígitos')
+  if (!phone) throw new DomainError('El número debe ser un celular colombiano de diez dígitos')
 
   if (!isNearCity({ lat: input.lat, lng: input.lng }, { lat: city.centerLat, lng: city.centerLng })) {
-    throw new Error(`La ubicación marcada queda muy lejos de ${city.name}. Revisa el punto en el mapa.`)
+    throw new DomainError(`La ubicación marcada queda muy lejos de ${city.name}. Revisa el punto en el mapa.`)
   }
 
   // No bloquea: publica y marca para revisión. Ver spec, sección de abuso.
@@ -101,7 +102,22 @@ export async function createRequest(
 export type RequestStatus = 'abierta' | 'en_atencion' | 'atendida' | 'cancelada' | 'archivada'
 export type Urgency = 'alta' | 'media' | 'baja'
 
+// Listas cerradas de valores válidos, para que quien reciba un parámetro de
+// la URL (page.tsx) pueda validarlo antes de pasarlo a una condición SQL
+// sobre una columna enum. Un valor que no está aquí (p. ej. "atendidas" en
+// plural) debe ignorarse, no llegar hasta Postgres: `inArray`/`eq` sobre un
+// valor fuera del enum produce 22P02 y tumba la página para cualquiera que
+// edite el enlace a mano.
+export const REQUEST_STATUSES: RequestStatus[] = ['abierta', 'en_atencion', 'atendida', 'cancelada', 'archivada']
+export const URGENCIES: Urgency[] = ['alta', 'media', 'baja']
+
 const VISIBLE_BY_DEFAULT: RequestStatus[] = ['abierta', 'en_atencion']
+
+// 50 por página: con el tope anterior de 200 sin paginar, cualquier ciudad
+// con más de 200 solicitudes abiertas perdía del listado —para siempre, sin
+// aviso— exactamente las más antiguas, que son las que más tiempo llevan
+// esperando.
+export const PAGE_SIZE = 50
 
 export type RequestListItem = {
   publicCode: string
@@ -126,10 +142,19 @@ export type ListFilters = {
   urgency?: Urgency
   search?: string
   near?: Coords
+  /** Página de 1 en adelante. Por defecto 1. */
+  page?: number
+  /** Tamaño de página; se limita a PAGE_SIZE incluso si se pide más. */
   limit?: number
 }
 
-export async function listRequests(filters: ListFilters): Promise<RequestListItem[]> {
+export type RequestListResult = {
+  items: RequestListItem[]
+  /** Total real de filas que cumplen los filtros, no `items.length`. */
+  total: number
+}
+
+export async function listRequests(filters: ListFilters): Promise<RequestListResult> {
   // Reabre lo abandonado antes de responder: la spec no usa cron para esto.
   await expireStaleClaims()
 
@@ -144,6 +169,10 @@ export async function listRequests(filters: ListFilters): Promise<RequestListIte
       or(ilike(requests.title, term), ilike(requests.neighborhood, term)) as never
     )
   }
+
+  const page = Math.max(1, Math.trunc(filters.page ?? 1))
+  const limit = Math.min(Math.max(1, Math.trunc(filters.limit ?? PAGE_SIZE)), PAGE_SIZE)
+  const offset = (page - 1) * limit
 
   // Haversine calculada en SQL (no en memoria): el LIMIT debe recortar las
   // solicitudes más cercanas, no las más recientes. Sigue sin PostGIS a
@@ -193,12 +222,25 @@ export async function listRequests(filters: ListFilters): Promise<RequestListIte
     .innerJoin(cities, eq(requests.cityId, cities.id))
     .where(and(...conditions))
     .orderBy(near ? sql`${distanceExpr} asc` : desc(requests.createdAt))
-    .limit(Math.min(filters.limit ?? 200, 200))
+    .limit(limit)
+    .offset(offset)
 
-  return rows.map((row) => ({
-    ...row,
-    distanceKm: row.distanceKm ?? undefined,
-  })) as unknown as RequestListItem[]
+  // Total real sobre las mismas condiciones, no `rows.length`: con más de
+  // una página de resultados, `rows.length` nunca pasa de `limit` y la
+  // página mostraría "50 solicitudes" aunque hubiera 900.
+  const [{ total }] = await db
+    .select({ total: count() })
+    .from(requests)
+    .innerJoin(cities, eq(requests.cityId, cities.id))
+    .where(and(...conditions))
+
+  return {
+    items: rows.map((row) => ({
+      ...row,
+      distanceKm: row.distanceKm ?? undefined,
+    })) as unknown as RequestListItem[],
+    total,
+  }
 }
 
 export type RequestDetail = Omit<RequestListItem, 'itemsPreview' | 'distanceKm'> & {
@@ -241,7 +283,17 @@ export async function getRequestByCode(
     })
     .from(requests)
     .innerJoin(cities, eq(requests.cityId, cities.id))
-    .where(and(eq(requests.publicCode, code), eq(requests.isHidden, false)))
+    .where(and(
+      eq(requests.publicCode, code),
+      eq(requests.isHidden, false),
+      // Una solicitud cancelada debe desaparecer "de inmediato", como
+      // promete el aviso de privacidad — no solo del listado, también de su
+      // propia URL de detalle. Sin este filtro, `/s/{code}` seguía sirviendo
+      // el registro completo (incluida la descripción, antes de la
+      // corrección de arriba) para quien canceló justamente para dejar de
+      // ser encontrable.
+      ne(requests.status, 'cancelada')
+    ))
     .limit(1)
 
   if (!row) return null
@@ -311,8 +363,8 @@ async function requireOwner(code: string, manageToken: string) {
     .where(eq(requests.publicCode, code))
     .limit(1)
 
-  if (!row) throw new Error('Esta solicitud no existe')
-  if (!verifyToken(manageToken, row.manageTokenHash)) throw new Error('No autorizado')
+  if (!row) throw new DomainError('Esta solicitud no existe')
+  if (!verifyToken(manageToken, row.manageTokenHash)) throw new DomainError('No autorizado')
   return row
 }
 
@@ -344,7 +396,7 @@ export async function updateRequest(
   // usuario, editarla movería `updatedAt` y alteraría el reloj de
   // anonimización que la política de datos promete cumplir.
   if (owner.status !== 'abierta' && owner.status !== 'en_atencion') {
-    throw new Error('Esta solicitud ya está cerrada y no se puede editar')
+    throw new DomainError('Esta solicitud ya está cerrada y no se puede editar')
   }
 
   await db.transaction(async (tx) => {
@@ -406,6 +458,11 @@ export async function cancelRequest(code: string, manageToken: string): Promise<
         requesterName: 'Anónimo',
         whatsapp: null,
         addressText: null,
+        // La descripción es texto libre: ahí es justo donde la gente escribe
+        // lo que la identifica ("la casa verde al lado de la panadería...").
+        // El aviso de privacidad promete "sin nada que permita identificarte",
+        // así que se borra igual que el nombre, el teléfono y la dirección.
+        description: null,
         // Redondea a ~1 km para que no se pueda ubicar la vivienda.
         lat: sql`round(${requests.lat}::numeric, 2)::double precision`,
         lng: sql`round(${requests.lng}::numeric, 2)::double precision`,
@@ -438,7 +495,7 @@ export async function getContactPhone(
 export async function reportRequest(code: string, reason: string, ip: string): Promise<void> {
   const [row] = await db.select({ id: requests.id }).from(requests)
     .where(eq(requests.publicCode, code)).limit(1)
-  if (!row) throw new Error('Esta solicitud no existe')
+  if (!row) throw new DomainError('Esta solicitud no existe')
 
   await db.insert(reports).values({
     requestId: row.id,

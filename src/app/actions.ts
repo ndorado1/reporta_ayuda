@@ -2,6 +2,7 @@
 
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
+import { ZodError } from 'zod'
 import { claimRequest, cancelClaim } from '@/lib/claims'
 import {
   createRequest,
@@ -13,13 +14,26 @@ import {
   type UpdateRequestInput,
 } from '@/lib/requests'
 import { getClientIp } from '@/lib/request-ip'
+import { DomainError } from '@/lib/errors'
 
 type Result<T = unknown> = ({ ok: true } & T) | { ok: false; error: string }
 
-const fail = (e: unknown): Result => ({
-  ok: false,
-  error: e instanceof Error ? e.message : 'Ocurrió un error inesperado',
-})
+/**
+ * Solo un DomainError o un error de validación de Zod tienen un mensaje
+ * pensado para mostrarse. Cualquier otra cosa (Drizzle envuelve cada fallo
+ * de consulta con el SQL y los parámetros literales, que pueden incluir el
+ * nombre, el teléfono o las coordenadas de quien está publicando) se
+ * registra en el servidor y se responde con un mensaje genérico: exponerlo
+ * tal cual sería mostrarle a la persona su propio INSERT en inglés.
+ */
+const fail = (e: unknown): Result => {
+  if (e instanceof DomainError) return { ok: false, error: e.message }
+  if (e instanceof ZodError) {
+    return { ok: false, error: e.issues[0]?.message ?? 'Revisa los datos' }
+  }
+  console.error(e)
+  return { ok: false, error: 'No pudimos guardar. Inténtalo de nuevo en un momento.' }
+}
 
 export async function claimAction(input: {
   publicCode: string
@@ -80,10 +94,6 @@ export async function updateRequestAction(
     revalidatePath(`/s/${code}`)
     return { ok: true }
   } catch (e) {
-    if (e && typeof e === 'object' && 'issues' in e) {
-      const issues = (e as { issues: { message: string }[] }).issues
-      return { ok: false, error: issues[0]?.message ?? 'Revisa los datos' }
-    }
     return fail(e)
   }
 }
@@ -97,11 +107,6 @@ export async function createRequestAction(
     revalidatePath('/')
     return { ok: true, ...created }
   } catch (e) {
-    // Zod entrega varios errores; mostramos el primero, que es el más útil.
-    if (e && typeof e === 'object' && 'issues' in e) {
-      const issues = (e as { issues: { message: string }[] }).issues
-      return { ok: false, error: issues[0]?.message ?? 'Revisa los datos del formulario' }
-    }
     return fail(e) as Result<{ publicCode: string; manageToken: string; needsReview: boolean }>
   }
 }

@@ -13,6 +13,7 @@ async function makeRequest(over: Record<string, unknown> = {}) {
     cityId: city.id, publicCode: `C${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
     manageTokenHash: 'h', title: 'Agua', requesterName: 'Ana',
     whatsapp: '+573001234567', addressText: 'Calle 5 #20-30',
+    description: 'La casa verde al lado de la panadería, vive mi mamá y yo',
     neighborhood: 'El Diamante', lat: 3.45, lng: -76.53, ipHash: 'i',
     ...over,
   }).returning()
@@ -31,6 +32,7 @@ describe('anonymizeOldRequests', () => {
     expect(after.whatsapp).toBeNull()
     expect(after.requesterName).toBe('Anónimo')
     expect(after.addressText).toBeNull()
+    expect(after.description).toBeNull()
     expect(after.anonymizedAt).not.toBeNull()
   })
 

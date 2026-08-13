@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, beforeAll } from 'vitest'
 import { sql } from 'drizzle-orm'
 import { testDb, resetTestDb, seedTestCity } from '@/test/db'
 import { cities, requests } from '@/db/schema'
-import { createRequest, listRequests, getRequestByCode, fulfillRequest, cancelRequest, getContactPhone } from './requests'
+import { createRequest, listRequests, getRequestByCode, fulfillRequest, cancelRequest, getContactPhone, PAGE_SIZE } from './requests'
 import { claimRequest } from './claims'
 
 beforeAll(() => { process.env.IP_HASH_SECRET = 'secreto-de-prueba' })
@@ -28,7 +28,7 @@ describe('listRequests', () => {
     await seedTestCity()
     await createRequest(input(), '1.1.1.1')
 
-    const [item] = await listRequests({})
+    const { items: [item] } = await listRequests({})
     expect(JSON.stringify(item)).not.toContain('573001234567')
     expect(item).not.toHaveProperty('whatsapp')
   })
@@ -39,9 +39,9 @@ describe('listRequests', () => {
     await createRequest(input({ title: 'Necesito cobijas gruesas' }), '1.1.1.1')
     await fulfillRequest(a.publicCode, a.manageToken)
 
-    const list = await listRequests({})
-    expect(list).toHaveLength(1)
-    expect(list[0].title).toBe('Necesito cobijas gruesas')
+    const { items } = await listRequests({})
+    expect(items).toHaveLength(1)
+    expect(items[0].title).toBe('Necesito cobijas gruesas')
   })
 
   it('devuelve las atendidas cuando se piden explícitamente', async () => {
@@ -49,8 +49,8 @@ describe('listRequests', () => {
     const a = await createRequest(input(), '1.1.1.1')
     await fulfillRequest(a.publicCode, a.manageToken)
 
-    const list = await listRequests({ statuses: ['atendida'] })
-    expect(list).toHaveLength(1)
+    const { items } = await listRequests({ statuses: ['atendida'] })
+    expect(items).toHaveLength(1)
   })
 
   it('filtra por ciudad', async () => {
@@ -62,8 +62,8 @@ describe('listRequests', () => {
     await createRequest(input(), '1.1.1.1')
     await createRequest(input({ citySlug: 'armenia', lat: 4.53, lng: -75.68 }), '1.1.1.1')
 
-    expect(await listRequests({ citySlug: 'cali' })).toHaveLength(1)
-    expect(await listRequests({})).toHaveLength(2)
+    expect((await listRequests({ citySlug: 'cali' })).items).toHaveLength(1)
+    expect((await listRequests({})).items).toHaveLength(2)
   })
 
   it('filtra por urgencia', async () => {
@@ -71,7 +71,7 @@ describe('listRequests', () => {
     await createRequest(input({ urgency: 'alta' }), '1.1.1.1')
     await createRequest(input({ urgency: 'baja', title: 'Necesitamos ropa seca' }), '1.1.1.1')
 
-    const altas = await listRequests({ urgency: 'alta' })
+    const { items: altas } = await listRequests({ urgency: 'alta' })
     expect(altas).toHaveLength(1)
   })
 
@@ -80,8 +80,8 @@ describe('listRequests', () => {
     await createRequest(input({ title: 'Necesitamos pañales', neighborhood: 'Siloé' }), '1.1.1.1')
     await createRequest(input({ title: 'Necesitamos agua potable', neighborhood: 'Aguablanca' }), '1.1.1.1')
 
-    expect(await listRequests({ search: 'pañales' })).toHaveLength(1)
-    expect(await listRequests({ search: 'aguablanca' })).toHaveLength(1)
+    expect((await listRequests({ search: 'pañales' })).items).toHaveLength(1)
+    expect((await listRequests({ search: 'aguablanca' })).items).toHaveLength(1)
   })
 
   it('incluye una muestra de los ítems y el total', async () => {
@@ -92,7 +92,7 @@ describe('listRequests', () => {
       ],
     }), '1.1.1.1')
 
-    const [item] = await listRequests({})
+    const { items: [item] } = await listRequests({})
     expect(item.itemsPreview).toHaveLength(3)
     expect(item.itemCount).toBe(4)
   })
@@ -102,9 +102,9 @@ describe('listRequests', () => {
     await createRequest(input({ title: 'Lejos del punto de referencia', lat: 3.50, lng: -76.60 }), '1.1.1.1')
     await createRequest(input({ title: 'Cerca del punto de referencia', lat: 3.441, lng: -76.521 }), '1.1.1.1')
 
-    const list = await listRequests({ near: { lat: 3.44, lng: -76.52 } })
-    expect(list[0].title).toBe('Cerca del punto de referencia')
-    expect(list[0].distanceKm).toBeLessThan(list[1].distanceKm!)
+    const { items } = await listRequests({ near: { lat: 3.44, lng: -76.52 } })
+    expect(items[0].title).toBe('Cerca del punto de referencia')
+    expect(items[0].distanceKm).toBeLessThan(items[1].distanceKm!)
   })
 
   it('ordena por cercanía en la base, no solo en memoria, cuando hay más solicitudes que el límite', async () => {
@@ -117,8 +117,8 @@ describe('listRequests', () => {
 
     // El límite es menor que el total: si el LIMIT se aplicara antes de
     // ordenar por distancia, la cercana-pero-antigua quedaría descartada.
-    const list = await listRequests({ near, limit: 2 })
-    expect(list[0].title).toBe('Cercana pero antigua')
+    const { items } = await listRequests({ near, limit: 2 })
+    expect(items[0].title).toBe('Cercana pero antigua')
   })
 
   it('oculta lo que la moderación escondió', async () => {
@@ -126,7 +126,7 @@ describe('listRequests', () => {
     const a = await createRequest(input(), '1.1.1.1')
     await testDb.update(requests).set({ isHidden: true })
 
-    expect(await listRequests({})).toHaveLength(0)
+    expect((await listRequests({})).items).toHaveLength(0)
     expect(a.publicCode).toBeDefined()
   })
 
@@ -136,7 +136,7 @@ describe('listRequests', () => {
     await claimRequest({ publicCode: a.publicCode, volunteerName: 'Luis' }, '2.2.2.2')
     await testDb.execute(sql`UPDATE claims SET expires_at = now() - interval '1 hour'`)
 
-    const [item] = await listRequests({})
+    const { items: [item] } = await listRequests({})
     expect(item.status).toBe('abierta')
   })
 
@@ -145,8 +145,65 @@ describe('listRequests', () => {
     const a = await createRequest(input(), '1.1.1.1')
     await claimRequest({ publicCode: a.publicCode, volunteerName: 'Luis Pérez' }, '2.2.2.2')
 
-    const [item] = await listRequests({})
+    const { items: [item] } = await listRequests({})
     expect(item.claimedBy).toBe('Luis Pérez')
+  })
+
+  describe('paginación', () => {
+    // Inserta directo en la base (sin pasar por createRequest) para que la
+    // prueba sea rápida con decenas de filas y para fijar `createdAt` a
+    // mano: así el orden por defecto (más reciente primero) es predecible
+    // sin depender de la precisión del reloj real entre inserciones.
+    async function seedMany(n: number) {
+      const city = await seedTestCity()
+      const base = Date.now()
+      await testDb.insert(requests).values(
+        Array.from({ length: n }, (_, i) => ({
+          cityId: city.id,
+          publicCode: `PAG${String(i).padStart(4, '0')}`,
+          manageTokenHash: 'h',
+          title: `Solicitud número ${String(i).padStart(3, '0')}`,
+          requesterName: 'Ana',
+          lat: 3.45,
+          lng: -76.53,
+          ipHash: 'i',
+          createdAt: new Date(base + i * 1000),
+        }))
+      )
+    }
+
+    it('el total refleja todas las filas que cumplen los filtros, no solo la página', async () => {
+      await seedMany(PAGE_SIZE + 30)
+
+      const { items, total } = await listRequests({})
+      expect(total).toBe(PAGE_SIZE + 30)
+      expect(items).toHaveLength(PAGE_SIZE)
+    })
+
+    it('no trunca de forma silenciosa: la segunda página trae lo que falta, empezando por lo más antiguo', async () => {
+      await seedMany(PAGE_SIZE + 5)
+
+      const first = await listRequests({ page: 1 })
+      const second = await listRequests({ page: 2 })
+
+      expect(second.items).toHaveLength(5)
+      // La más antigua (título "000") es la primera en orden descendente
+      // por fecha invertido: con 55 solicitudes y una sola página de 50,
+      // el tope anterior de 200 sin paginar la habría escondido para
+      // siempre en cuanto una ciudad superara las 200 abiertas. Aquí debe
+      // seguir siendo alcanzable, en la última página.
+      expect(second.items.map((i) => i.title)).toContain('Solicitud número 000')
+      // Ninguna solicitud debe repetirse entre páginas.
+      const firstCodes = new Set(first.items.map((i) => i.title))
+      for (const item of second.items) expect(firstCodes.has(item.title)).toBe(false)
+    })
+
+    it('ignora un límite mayor a PAGE_SIZE: nunca trae más de una página', async () => {
+      await seedMany(PAGE_SIZE + 10)
+
+      const { items } = await listRequests({ limit: 1000 })
+      expect(items).toHaveLength(PAGE_SIZE)
+    })
   })
 })
 
@@ -210,6 +267,27 @@ describe('cierre de solicitudes', () => {
     expect(row.requesterName).not.toBe('Ana Ruiz')
     expect(row.anonymizedAt).not.toBeNull()
     expect(row.neighborhood).toBe('El Diamante')
+  })
+
+  it('borra la descripción libre al cancelar: puede contener lo mismo que el nombre o la dirección', async () => {
+    await seedTestCity()
+    const a = await createRequest(
+      input({ description: 'La casa verde al lado de la panadería de la 15, vive mi mamá y yo' }),
+      '1.1.1.1'
+    )
+    await cancelRequest(a.publicCode, a.manageToken)
+
+    const [row] = await testDb.select().from(requests)
+    expect(row.description).toBeNull()
+  })
+
+  it('deja de servir el detalle de una solicitud cancelada, ni siquiera con el token de gestión', async () => {
+    await seedTestCity()
+    const a = await createRequest(input(), '1.1.1.1')
+    await cancelRequest(a.publicCode, a.manageToken)
+
+    expect(await getRequestByCode(a.publicCode)).toBeNull()
+    expect(await getRequestByCode(a.publicCode, a.manageToken)).toBeNull()
   })
 
   it('no anonimiza al marcar como atendida: ese caso sigue el plazo de 60 días', async () => {
