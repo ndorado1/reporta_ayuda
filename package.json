@@ -2,6 +2,10 @@
   "name": "reporta-cali",
   "version": "0.1.0",
   "private": true,
+  "description": "Plataforma de ayuda durante la emergencia por el terremoto del 10 de agosto de 2026 en Colombia",
+  "license": "MIT",
+  "author": "Antonio Dorado",
+  "repository": "github:ndorado1/reporta_ayuda",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

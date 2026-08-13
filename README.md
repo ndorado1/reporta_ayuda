@@ -181,6 +181,5 @@ Leaflet con OpenStreetMap, Vitest y Playwright.
 
 ## Licencia
 
-Pendiente de elegir. Hasta que se añada un archivo `LICENSE`, se aplican los
-derechos de autor por defecto: el código es público pero no está licenciado
-para su reutilización.
+[MIT](LICENSE) © 2026 Antonio Dorado. Cópialo, adáptalo y despliégalo donde
+haga falta; solo conserva el aviso de copyright.
