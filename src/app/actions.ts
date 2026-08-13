@@ -3,7 +3,7 @@
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { claimRequest, cancelClaim } from '@/lib/claims'
-import { createRequest, fulfillRequest, cancelRequest, type CreateRequestInput } from '@/lib/requests'
+import { createRequest, fulfillRequest, cancelRequest, reportRequest, type CreateRequestInput } from '@/lib/requests'
 import { getClientIp } from '@/lib/request-ip'
 
 type Result<T = unknown> = ({ ok: true } & T) | { ok: false; error: string }
@@ -76,5 +76,15 @@ export async function createRequestAction(
       return { ok: false, error: issues[0]?.message ?? 'Revisa los datos del formulario' }
     }
     return fail(e) as Result<{ publicCode: string; manageToken: string; needsReview: boolean }>
+  }
+}
+
+export async function reportAction(publicCode: string, reason: string): Promise<Result> {
+  try {
+    const ip = getClientIp(await headers())
+    await reportRequest(publicCode, reason, ip)
+    return { ok: true }
+  } catch (e) {
+    return fail(e)
   }
 }

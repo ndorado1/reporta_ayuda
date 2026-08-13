@@ -4,6 +4,7 @@ import { UrgencyBadge } from './ui/UrgencyBadge'
 import { StatusBadge } from './ui/StatusBadge'
 import { WhatsAppButton } from './WhatsAppButton'
 import { ClaimButton } from './ClaimButton'
+import { ReportButton } from './ReportButton'
 import type { RequestListItem } from '@/lib/requests'
 
 export function RequestCard({ item }: { item: RequestListItem }) {
@@ -53,6 +54,10 @@ export function RequestCard({ item }: { item: RequestListItem }) {
             <ClaimButton code={item.publicCode} />
           </div>
         )}
+      </div>
+
+      <div className="mt-3">
+        <ReportButton code={item.publicCode} />
       </div>
     </article>
   )

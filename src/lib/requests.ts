@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { db } from '@/db'
-import { cities, claims, events, requestItems, requests } from '@/db/schema'
+import { cities, claims, events, reports, requestItems, requests } from '@/db/schema'
 import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm'
 import { generatePublicCode, generateToken, hashIp, hashToken, verifyToken } from './tokens'
 import { normalizePhone } from './whatsapp'
@@ -379,4 +379,57 @@ export async function getContactPhone(
 
   if (!row?.phone) return null
   return { phone: row.phone, title: row.title }
+}
+
+export async function reportRequest(code: string, reason: string, ip: string): Promise<void> {
+  const [row] = await db.select({ id: requests.id }).from(requests)
+    .where(eq(requests.publicCode, code)).limit(1)
+  if (!row) throw new Error('Esta solicitud no existe')
+
+  await db.insert(reports).values({
+    requestId: row.id,
+    reason: reason.trim().slice(0, 500),
+    ipHash: hashIp(ip),
+  })
+  // Un reporte no oculta nada por sí solo: lo decide una persona en /admin.
+  await db.update(requests).set({ needsReview: true }).where(eq(requests.id, row.id))
+}
+
+export type ModerationRow = {
+  publicCode: string
+  title: string
+  cityName: string
+  status: RequestStatus
+  isHidden: boolean
+  needsReview: boolean
+  reportCount: number
+  createdAt: Date
+}
+
+export async function listForModeration(): Promise<ModerationRow[]> {
+  const rows = await db
+    .select({
+      publicCode: requests.publicCode,
+      title: requests.title,
+      cityName: cities.name,
+      status: requests.status,
+      isHidden: requests.isHidden,
+      needsReview: requests.needsReview,
+      createdAt: requests.createdAt,
+      reportCount: sql<number>`(
+        select count(*)::int from ${reports} where request_id = ${requests.id}
+      )`,
+    })
+    .from(requests)
+    .innerJoin(cities, eq(requests.cityId, cities.id))
+    .orderBy(desc(requests.needsReview), desc(requests.createdAt))
+    .limit(200)
+
+  return rows as ModerationRow[]
+}
+
+export async function setHidden(code: string, hidden: boolean): Promise<void> {
+  await db.update(requests)
+    .set({ isHidden: hidden, needsReview: false })
+    .where(eq(requests.publicCode, code))
 }
