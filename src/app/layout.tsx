@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Public_Sans } from 'next/font/google'
 import Link from 'next/link'
-import { Plus } from 'lucide-react'
+import { Heart, Plus } from 'lucide-react'
 import { listCities } from '@/lib/cities'
 import { SiteHeader } from '@/components/SiteHeader'
 import './globals.css'
@@ -79,6 +79,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <p className="mt-3">
             Reporta Ayuda es una iniciativa ciudadana sin ánimo de lucro para coordinar la
             ayuda tras el terremoto.
+          </p>
+          {/* El corazón es un icono SVG y no un emoji: los emoji los dibuja
+              cada sistema a su manera y algunos Android antiguos los rinden
+              como un cuadro vacío. Va oculto para los lectores de pantalla,
+              con la palabra al lado en su lugar, para que se lea
+              "Desarrollado con amor por" y no "Desarrollado con por". */}
+          <p className="mt-2 flex items-center gap-1.5">
+            Desarrollado con
+            <Heart aria-hidden="true" className="h-4 w-4 fill-(--color-urgente) text-(--color-urgente)" />
+            <span className="sr-only">amor</span>
+            por Antonio Dorado
           </p>
         </footer>
 
