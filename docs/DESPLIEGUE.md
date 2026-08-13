@@ -79,6 +79,34 @@ Si `db:migrate` falla con un error de conexión, revisar primero que
 `DATABASE_URL` en `.env` tenga la clave codificada como se explicó arriba y
 que el Postgres acepte conexiones desde este servidor.
 
+### Si el despliegue lo maneja un panel (EasyPanel, Coolify)
+
+Estos paneles construyen la imagen desde su propio directorio y no dejan una
+copia del proyecto en el servidor, así que el paso 3 no se puede correr como
+está escrito. Las variables van en la pestaña **Environment** del servicio, no
+en un archivo `.env`, y las migraciones se corren **dentro del contenedor**,
+que para eso lleva `drizzle/`, `drizzle.config.ts` y `tsconfig.json`:
+
+```bash
+docker exec -it $(docker ps -qf name=NOMBRE_DEL_SERVICIO) npm run db:migrate
+docker exec -it $(docker ps -qf name=NOMBRE_DEL_SERVICIO) npm run db:seed
+```
+
+Sin esto la aplicación arranca y conecta, pero cada página falla con
+`relation "cities" does not exist`: la base existe y está vacía.
+
+El mantenimiento diario del paso 6 también cambia: el `crontab` del servidor
+no puede entrar a la carpeta del proyecto porque no hay ninguna. La línea
+pasa a ser:
+
+```
+0 3 * * * docker exec $(docker ps -qf name=NOMBRE_DEL_SERVICIO) npm run maintenance >> /var/log/reporta-mantenimiento.log 2>&1
+```
+
+Y nginx normalmente ya lo gestiona el panel: en ese caso, comprobar que su
+configuración incluye `proxy_set_header X-Real-IP $remote_addr;` antes de dar
+por buena la comprobación de seguridad de más abajo.
+
 4. Levantar la aplicación:
 
 ```bash
